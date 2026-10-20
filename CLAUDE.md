@@ -29,7 +29,8 @@ Guides explain AND move the developer forward: the agent should produce things (
 
 ## Current state
 - Next.js 16 (App Router, Turbopack, Cache Components) + Tailwind v4 + shadcn/ui (radix-nova, zinc tokens carried over from the prototype). Next 16 has breaking changes: read `node_modules/next/dist/docs/` before touching framework APIs (see AGENTS.md).
-- Routes: `/` library + live generation, `/guides/[key]` (static, from `data/guides/*.json`), `/draft?app=<slug>` (generated drafts, saved per browser in localStorage by `src/lib/drafts.ts` and listed in the library with a Draft badge; a reviewed guide always wins over a draft). Old `/#gmail` links redirect.
+- Routes: `/` library + live generation, `/guides/[key]` (static, from `data/guides/*.json`), `/g/[id]` (generated guides from Neon; the share link), `/admin` (ADMIN_EMAILS), `/auth/sign-in|sign-up` (Neon Auth). `/draft` is legacy (browser-saved drafts and `#share=` links). A reviewed guide always wins over a draft in the library.
+- Data: Neon Postgres (`db/schema.sql`: guides, chats, events; users in `neon_auth."user"`). Neon project `morning-cake-54391842`, us-east-1. Generating and asking require sign-in; reading is public. After saving a guide the client calls the `refreshLibrary` server action (`updateTag`), because `revalidateTag` from inside the streaming response didn't take effect. Anything reading the session must call `currentUser()` (it calls `connection()` so builds never prerender a signed-out result).. Old `/#gmail` links redirect.
 - Guide data: `data/guides/<key>.json` (register new files in `src/lib/guides.ts`), app list in `data/catalog.json`.
 - Agent: `POST /api/generate` (`{query}`) and `POST /api/agent` (`{guide, messages}`) use the user's own key from Settings (`src/lib/ai-settings.ts`, `src/components/settings/`): Anthropic = Claude Opus 5.5 with server-side web search + web fetch; Gemini = 3.8 Flash / 3.5 Flash-Lite with URL context (free tier, model picks pages to open first) plus Google Search when the paid-tier toggle is on (`src/lib/research.ts`). `POST /api/key-check` validates a key with a free listing call. Both stream NDJSON: `search` / `fetch` / `text` events, then `done` or `error`. Generate's `done.payload` is `{guide, logo, research}`.
 - Evidence is enforced server-side in the generate route: "sourced" survives only if the claim's `src` is a page the model actually opened (web_fetch); sources not opened are dropped; "tested" is never allowed.
@@ -47,4 +48,4 @@ Guides explain AND move the developer forward: the agent should produce things (
 2. ~~API routes with web search.~~ Built; not yet run against the live API (needs a key in `.env`).
 3. ~~Verification pass → `VERIFICATION.md`.~~ Done (Gmail, Slack, Aircall, Notion + 3 live generations).
 4. ~~README: setup, key decisions, limitations.~~ Done.
-5. Deploy (Vercel) and test live generation on 3 unseen apps.
+5. ~~Deploy (Vercel)~~ Live at https://oauth-runway-blush.vercel.app (repo github.com/Divyaraj-M/oauth-runway). Deploy with `vercel deploy --prod`; env vars are set in Vercel.

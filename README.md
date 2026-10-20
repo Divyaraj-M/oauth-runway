@@ -6,15 +6,33 @@
 
 Before an AI agent can act in a user's Gmail, Slack or Aircall, the developer often needs their own OAuth app with that provider. Provider docs and Composio's auth guides explain *the clicks*. They rarely say *how long*: whether it's an hour of self-serve setup or two months of partner review, which scope pulls you into a paid security audit, or which email resets your place in a queue. OAuth Runway answers those questions first.
 
+**Live:** https://oauth-runway-blush.vercel.app · **Source:** https://github.com/Divyaraj-M/oauth-runway
+
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env    # optional: LOGO_DEV_TOKEN (publishable pk_…) for extra logos
-npm run dev             # http://localhost:3000
+cp .env.example .env
 ```
 
-Then click **Add AI key** (top right) and paste your own key:
+Database and sign-in run on **Neon** (Postgres + Neon Auth). With the `neon` CLI (`npx neonctl auth` to log in):
+
+```bash
+npx neonctl projects create --name oauth-runway --region-id aws-us-east-1
+npx neonctl neon-auth enable --project-id <project> --branch main --database-name neondb
+npx neonctl connection-string main --project-id <project> --pooled   # → DATABASE_URL
+```
+
+Put `DATABASE_URL`, `NEON_AUTH_BASE_URL` (the `base_url` printed by `neon-auth enable`), `NEON_AUTH_COOKIE_SECRET` (`openssl rand -base64 32`) and `ADMIN_EMAILS` (your email, for `/admin`) in `.env`. Then:
+
+```bash
+node --env-file=.env scripts/migrate.mjs   # creates guides, chats, events
+npm run dev                                # http://localhost:3000
+```
+
+Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_URL` to mirror logos into Cloudinary.
+
+**Sign in** (email + password, or Google), then click **Add AI key** (top right) and paste your own key:
 
 - **Google Gemini (free):** create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) **in a project with no billing linked**. A billed project with depleted prepay credits is refused ("prepayment credits are depleted"), even for free models. Leave *Use Google Search* off on the free tier.
 - **Anthropic Claude:** a key from console.anthropic.com with API credits. Uses Claude Opus 5.5 with web search and web fetch, which gives the best-sourced guides.
@@ -28,15 +46,14 @@ Then click **Add AI key** (top right) and paste your own key:
   - Slack: L2 Review to list
   - Gmail: L3 Security audit
   - Aircall: L4 Partner-gated
-- **Live generation:** type an app name or website and what your agent should do. The agent researches it and streams progress (pages it opens). The guide is saved to your list as a **Draft**.
+- **Live generation (signed in):** type an app name or website and what your agent should do. The agent researches it and streams progress (pages it opens). The guide is saved to the **shared library** as a **Draft** and gets its own page, `/g/<id>`, which is its share link.
 - **Guide page:**
   - Difficulty and timeline at a glance.
   - *Start now* (the one action that shortens the wait).
   - Tabs: *Your case* (how your situation changes the path), *Steps*, *Blockers*, *Who does what*, *Sources*.
-- **Agent chat:** ask about any step; it can draft the plan doc, scope list or reviewer email. Chats are saved per guide.
-- **Share:**
-  - Reviewed guides: copy link.
-  - Generated guides: copy share link (the guide travels in the URL), or Copy as Markdown.
+- **Agent chat (signed in):** ask about any step; it can draft the plan doc, scope list or reviewer email. Chats are saved to your account per guide.
+- **Share:** every guide has a link anyone can open without signing in (`/guides/<app>` for reviewed, `/g/<id>` for generated), plus Copy as Markdown.
+- **Admin (`/admin`, `ADMIN_EMAILS` only):** users, every generated guide, and every generation, question and key check with its outcome, duration and error.
 
 ## Key decisions
 
@@ -55,8 +72,8 @@ Then click **Add AI key** (top right) and paste your own key:
 4. **"Your case" first.** The same app can be L1 or L3 depending on scopes or who connects (internal vs. customers), so the case table is the default tab.
 5. **Agent vs. you.** Each step says who does it. The agent produces artifacts (plan docs, scope lists, justification text), not just descriptions.
 6. **Bring your own AI key, no server secrets.** Keys stay in the user's browser, are sent per request in a header, and are never stored or logged (errors are redacted). Key-like text is blocked in search and chat on both client and server. Gemini works on the free tier: without Google Search, the agent first picks official pages, then opens them with URL context.
-7. **No database.** Drafts and chats live in the browser. Share links compress the whole guide into the URL fragment, which is never sent to a server.
-8. **Logos by waterfall:** bundled SVGL → SVGL API → BrandBird → Logo.dev → letter tile, resolved on the server and cached for a day. A new catalog entry with a `domain` gets a logo with no code change.
+7. **One shared library, attributed.** Generated guides, chats and a usage log live in Neon Postgres (`db/schema.sql`). Reading is open to everyone; generating and asking need sign-in (Neon Auth), so every run has an owner and shows on `/admin`. Generated guides are immutable and cached; the library refreshes the moment a guide is saved.
+8. **Logos by waterfall:** bundled SVGL → SVGL API → BrandBird → Logo.dev → letter tile, resolved on the server and cached for a day. SVGL and BrandBird logos are mirrored into Cloudinary when configured (Logo.dev images are loaded from Logo.dev, as its terms expect). A new catalog entry with a `domain` gets a logo with no code change.
 
 ## Verification
 
@@ -72,8 +89,10 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 - **4 reviewed guides, not 100.** The other catalog apps rely on live generation.
 - **Free-tier generation is thin:** Gemini Flash-Lite without Google Search opens 1–3 pages and labels most claims Unverified. Use a Claude key or a paid Gemini key with Search for better-sourced drafts.
 - **Generated guides aren't reviewed by a person** and can be wrong. They're always marked *Live draft*.
-- **Drafts and chats are per browser.** Share links work anywhere, but there's no shared library of generated guides.
+- **Sign-in:** Google uses Neon's shared development credentials (the consent screen says Neon) until your own Google OAuth app is added; GitHub sign-in isn't set up; email verification is off. Sign-in works on the production URL and localhost, not on Vercel preview URLs.
+- **Generated guides can't be edited or deleted from the UI** yet; an admin can remove rows in the database.
 - **Aircall's waiting times come from one real integration** (Aug–Oct 2026) plus Aircall's stated windows.
+- **`/guides/<unknown>` and `/g/<unknown>` show the not-found page with HTTP 200** (the page streams before the lookup finishes).
 - **No automatic re-check of provider docs.** Reviewed guides show the date they were last checked by hand.
 
 ## Project map
@@ -83,8 +102,10 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 - `src/app/api/generate`: live research and guide generation (NDJSON stream; payload `{guide, logo, research}`).
 - `src/app/api/agent`: the agent chat.
 - `src/app/api/key-check`: validates a key.
+- `src/app/g/[id]`: a saved generated guide. `src/app/admin`: usage dashboard. `src/app/auth/*`: sign-in and sign-up.
+- `src/lib/db.ts` + `db/schema.sql`: Neon queries and schema. `src/lib/auth/`: Neon Auth. `src/lib/cloudinary.ts`: logo mirroring.
 - `src/lib/research.ts`: Anthropic (web search + fetch) and Gemini (URL context, optional Search) research loops.
 - `src/lib/logos.ts`: the logo waterfall.
 - `src/components/`: UI, built only from shadcn/ui components.
 
-Stack: Next.js 16 (App Router, Cache Components), Tailwind v4, shadcn/ui, `@anthropic-ai/sdk`, `@google/genai`.
+Stack: Next.js 16 (App Router, Cache Components), Tailwind v4, shadcn/ui, Neon Postgres + Neon Auth, Cloudinary, `@anthropic-ai/sdk`, `@google/genai`, deployed on Vercel.
