@@ -16,6 +16,8 @@ export type ResearchLog = {
   opened: string[];
   /** Search hits the model saw as titles/snippets but did not open. */
   seen: { title: string; url: string }[];
+  /** Requested URL → final URL after redirects, so a citation of the requested URL matches the page that opened. */
+  aliases: Record<string, string>;
 };
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -64,7 +66,7 @@ export function research(args: ResearchArgs): Promise<{ text: string; log: Resea
 
 async function anthropicResearch({ system, messages, emit, effort = "medium", maxSearches = 8 }: ResearchArgs, apiKey: string) {
   const client = new Anthropic({ apiKey });
-  const log: ResearchLog = { searches: [], opened: [], seen: [] };
+  const log: ResearchLog = { searches: [], opened: [], seen: [], aliases: {} };
   const convo: Anthropic.Beta.BetaMessageParam[] = [...messages];
   let text = "";
 
@@ -118,7 +120,7 @@ async function anthropicResearch({ system, messages, emit, effort = "medium", ma
 
 async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: Extract<Credentials, { provider: "gemini" }>) {
   const ai = new GoogleGenAI({ apiKey: creds.apiKey });
-  const log: ResearchLog = { searches: [], opened: [], seen: [] };
+  const log: ResearchLog = { searches: [], opened: [], seen: [], aliases: {} };
   const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
 
   // URL context only reads URLs named in the prompt. Without Google Search (not on the free tier),
@@ -138,6 +140,7 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
     });
     const urls = parseUrls(plan.text ?? "").slice(0, 8);
     for (const u of urls) emit({ type: "note", text: `Will read ${u.replace(/^https?:\/\//, "")}` });
+    log.aliases = await resolveRedirects(urls);
     if (urls.length) contents.push({ role: "user", parts: [{ text: `Pages you may read with URL context:\n${urls.join("\n")}` }] });
   }
 
@@ -174,6 +177,21 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
   log.opened = [...opened];
   log.searches = [...searches];
   return { text, log };
+}
+
+/** Follows each URL's redirects (public pages only, 5s each) and maps requested → final URL when they differ. */
+async function resolveRedirects(urls: string[]): Promise<Record<string, string>> {
+  const pairs = await Promise.all(
+    urls.map(async (u) => {
+      try {
+        const res = await fetch(u, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(5000) });
+        return res.url && res.url !== u ? ([u, res.url] as const) : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null));
 }
 
 function parseUrls(s: string): string[] {

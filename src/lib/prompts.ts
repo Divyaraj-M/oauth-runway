@@ -9,7 +9,7 @@ Focus on what docs hide: hands-on time vs waiting time, review gates, scopes tha
 Difficulty levels: "self" = credentials in minutes, no review for the common case; "review" = works now, review only to list publicly; "audit" = verification plus a third-party security assessment for some permissions; "partner" = a person at the provider must approve and create the app.
 
 Evidence rules, strictly:
-- "sourced" only for a claim backed by a page you opened in this session. Put that page's exact URL in the claim's "src", and list it in "sources".
+- "sourced" only for a claim backed by a page you actually opened in this session (its content came back to you). Put that page's exact URL in the claim's "src", and list it in "sources". A page you planned to read but couldn't open is not a source.
 - Otherwise "uncertain". Never use "tested": nothing here was done first-hand.
 - If you can't confirm the app supports OAuth at all, say so in the verdict and in "unverified".
 - Prefer ranges. Never invent precise review durations; list unknowns in "unverified".
@@ -17,7 +17,7 @@ Evidence rules, strictly:
 
 When you have finished researching, reply with ONLY one JSON object, no prose before or after:
 {"app":string,"provider":string,"domain":string (provider's main website domain, e.g. "zoom.us"),"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences, starting with your reading of their case),
-"hands_on":{"text":string,"days":number},"waiting":{"best":string,"normal":string,"worst":string,"days":number},
+"hands_on":{"text":string (a short duration range only, e.g. "1–3 hours"),"days":number},"waiting":{"best":string,"normal":string,"worst":string (each a short duration range only, e.g. "2–6 weeks" or "None"),"days":number},
 "start_now":string,
 "cases":[{"case":string,"outcome":string,"ev":"sourced"|"uncertain","src"?:string}] (2-3),
 "steps":[{"who":"agent"|"you"|"provider","title":string,"detail":string,"ev":"sourced"|"uncertain","src"?:string}] (4-7),

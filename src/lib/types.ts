@@ -43,5 +43,13 @@ export type LogoInfo = { source: LogoSource; local?: string; light?: string; dar
 export type GeneratePayload = {
   guide: Guide;
   logo: LogoInfo;
-  research: { model: string; searches: string[]; opened: string[]; seen: number; downgraded: number };
+  research: {
+    model: string;
+    searches: string[];
+    opened: string[];
+    seen: number;
+    downgraded: number;
+    /** `src` URLs the model cited that it never opened (why claims were downgraded). */
+    rejected?: string[];
+  };
 };
