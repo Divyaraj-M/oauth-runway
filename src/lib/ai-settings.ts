@@ -17,9 +17,10 @@ export type AiSettings = {
   geminiSearch: boolean;
 };
 
+// Flash-Lite first: on the free tier 3.8 Flash is often overloaded (503) or slow; the server falls back to Flash-Lite anyway.
 export const GEMINI_MODELS = [
-  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash (free tier)" },
-  { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite (free tier, fastest)" },
+  { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite (free tier, fast, reliable)" },
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash (free tier, smarter, often busy)" },
 ] as const;
 
 export const DEFAULT_SETTINGS: AiSettings = { provider: "gemini", apiKey: "", geminiModel: GEMINI_MODELS[0].id, geminiSearch: false };

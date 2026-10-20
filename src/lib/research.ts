@@ -58,8 +58,43 @@ type ResearchArgs = {
 };
 
 /** One research turn: the model searches and opens pages, streams its answer, and reports what it opened. */
-export function research(args: ResearchArgs): Promise<{ text: string; log: ResearchLog }> {
-  return args.creds.provider === "anthropic" ? anthropicResearch(args, args.creds.apiKey) : geminiResearch(args, args.creds);
+export async function research(args: ResearchArgs): Promise<{ text: string; log: ResearchLog }> {
+  const creds = args.creds;
+  if (creds.provider === "anthropic") return anthropicResearch(args, creds.apiKey);
+  try {
+    return await geminiResearch(args, creds);
+  } catch (err) {
+    // Bigger Gemini models are often overloaded on the free tier. Retry the run once on Flash-Lite;
+    // creds.model is updated so the saved guide records the model that actually wrote it.
+    if (creds.model === FALLBACK_GEMINI || !isBusyOrSlow(err)) throw err;
+    args.emit({ type: "note", text: `${creds.model} is busy; switching to ${FALLBACK_GEMINI}` });
+    creds.model = FALLBACK_GEMINI;
+    return geminiResearch(args, creds);
+  }
+}
+
+const FALLBACK_GEMINI = "gemini-3.5-flash-lite";
+
+/** 429/500/503 from Gemini, our own timeouts, or the network dropping. */
+const isBusyOrSlow = (err: unknown) =>
+  (err instanceof GeminiApiError && [429, 500, 503].includes(err.status)) || isTimeout(err) || isNetwork(err);
+
+/** Node's fetch throws TypeError("fetch failed") when the connection drops or DNS fails. */
+const isNetwork = (err: unknown) => err instanceof TypeError && /fetch failed|network|ECONNRESET|ETIMEDOUT|ENOTFOUND/i.test(`${err.message} ${String(err.cause ?? "")}`);
+
+const isTimeout = (err: unknown) => err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError" || /timed? ?out/i.test(err.message));
+
+/** Retries a Gemini call on 503 (overloaded) or a dropped connection, after 1s, then 3s. */
+async function withRetry<T>(call: () => Promise<T>): Promise<T> {
+  for (const wait of [1000, 3000]) {
+    try {
+      return await call();
+    } catch (err) {
+      if (!((err instanceof GeminiApiError && err.status === 503) || isNetwork(err))) throw err;
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  return call();
 }
 
 /* ---------------- Anthropic: server-side web search + web fetch ---------------- */
@@ -127,7 +162,7 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
   // first ask the model which public pages to read, then let it open them.
   if (!creds.search) {
     emit({ type: "note", text: "Picking official pages to read" });
-    const plan = await ai.models.generateContent({
+    const plan = await withRetry(() => ai.models.generateContent({
       model: creds.model,
       contents: [
         ...contents,
@@ -137,7 +172,7 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
         },
       ],
       config: { systemInstruction: system, abortSignal: AbortSignal.timeout(45_000) },
-    });
+    }));
     const urls = parseUrls(plan.text ?? "").slice(0, 8);
     for (const u of urls) emit({ type: "note", text: `Will read ${u.replace(/^https?:\/\//, "")}` });
     log.aliases = await resolveRedirects(urls);
@@ -159,11 +194,11 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
   const searches = new Set<string>();
   try {
     arm();
-    const stream = await ai.models.generateContentStream({
+    const stream = await withRetry(() => ai.models.generateContentStream({
       model: creds.model,
       contents,
       config: { systemInstruction: system, tools: [{ urlContext: {} }, ...(creds.search ? [{ googleSearch: {} }] : [])], abortSignal: ctrl.signal },
-    });
+    }));
     // Race every read against the watchdog ourselves: the SDK doesn't abort a read that is already waiting.
     const it = stream[Symbol.asyncIterator]();
     const stalled = new Promise<never>((_, reject) => ctrl.signal.addEventListener("abort", () => reject(new Error("stalled")), { once: true }));
@@ -249,6 +284,10 @@ export function describeError(err: unknown): { status: number; message: string }
   }
   if (err instanceof Anthropic.APIError) return { status: 502, message: `Anthropic returned an error (${err.status ?? "network"}). Try again.` };
 
+  if (isTimeout(err)) return { status: 504, message: "The AI took too long to respond. Try again, or pick Flash-Lite in Settings." };
+  if (isNetwork(err)) return { status: 502, message: "Couldn't reach the AI provider (network error). Try again in a moment." };
+  if (err instanceof GeminiApiError && err.status === 503)
+    return { status: 503, message: "Gemini is overloaded right now. Try again in a minute, or pick Flash-Lite in Settings." };
   if (err instanceof GeminiApiError) {
     if (err.status === 400 && /api key/i.test(err.message)) return { status: 401, message: "Google rejected the API key. Check it in Settings." };
     if (err.status === 401 || err.status === 403) return { status: 401, message: "Google rejected the API key. Check it in Settings." };
@@ -288,7 +327,8 @@ export function ndjson(creds: Credentials, run: (send: (obj: unknown) => void) =
       try {
         await run(send);
       } catch (err) {
-        console.error(redact(err instanceof Error ? `${err.name}: ${err.message}` : String(err), creds.apiKey));
+        const cause = err instanceof Error && err.cause ? ` | cause: ${err.cause instanceof Error ? `${err.cause.name}: ${err.cause.message}` : String(err.cause)}` : "";
+        console.error(redact(err instanceof Error ? `${err.name}: ${err.message}${cause}` : String(err), creds.apiKey));
         send({ type: "error", message: describeError(err).message });
       } finally {
         if (!closed) controller.close();
