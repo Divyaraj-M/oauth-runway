@@ -12,11 +12,14 @@ export type Guide = {
   difficulty: Difficulty;
   verdict: string;
   hands_on: { text: string; days: number };
-  waiting: { best: string; normal: string; worst: string; days: number };
+  /** On generated guides, `ev`/`src` say whether an opened page backs the waiting time. */
+  waiting: { best: string; normal: string; worst: string; days: number; ev?: Evidence; src?: string };
   start_now: string;
   cases: { case: string; outcome: string; ev: Evidence; src?: string }[];
   steps: { who: Who; title: string; detail: string; ev: Evidence; src?: string }[];
   blockers: { text: string; ev: Evidence; src?: string }[];
+  /** Fixed setup questions every generated guide answers (paid plan, sandbox, review/user cap, scopes, redirect, tokens, consent screen, switching from Composio's managed app). */
+  facts?: { q: string; a: string; ev: Evidence; src?: string }[];
   agent_can: string[];
   you_must: string[];
   unverified: string[];

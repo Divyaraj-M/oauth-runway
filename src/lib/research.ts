@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ApiError as GeminiApiError, GoogleGenAI } from "@google/genai";
 
 import { getSealedKey } from "./db";
+import { docsHosts, findDocPages, readPage } from "./docs-index";
 import { open } from "./secret-box";
 
 /** Events streamed to the browser as NDJSON, one JSON object per line. */
@@ -176,22 +177,52 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
   // URL context only reads URLs named in the prompt. Without Google Search (not on the free tier),
   // first ask the model which public pages to read, then let it open them.
   if (!creds.search) {
-    emit({ type: "note", text: "Picking official pages to read" });
+    emit({ type: "note", text: "Finding the provider's docs" });
     const plan = await withRetry(() => ai.models.generateContent({
       model: creds.model,
       contents: [
         ...contents,
         {
           role: "user",
-          parts: [{ text: "Before answering: list up to 8 public URLs (official developer docs first) you would need to read to answer accurately. Reply with ONLY a JSON array of URL strings." }],
+          parts: [
+            {
+              text: 'Before answering: name the provider\'s main website domain and up to 6 public URLs (official developer docs first) you would read. Reply with ONLY JSON: {"domain":"example.com","urls":["https://…"]}',
+            },
+          ],
         },
       ],
       config: { systemInstruction: system, abortSignal: AbortSignal.timeout(45_000) },
     }));
-    const urls = parseUrls(plan.text ?? "").slice(0, 8);
-    for (const u of urls) emit({ type: "note", text: `Will read ${u.replace(/^https?:\/\//, "")}` });
-    log.aliases = await resolveRedirects(urls);
-    if (urls.length) contents.push({ role: "user", parts: [{ text: `Pages you may read with URL context:\n${urls.join("\n")}` }] });
+    const { domain, urls: guesses } = parsePlan(plan.text ?? "");
+
+    // Real pages from the provider's llms.txt beat guessed URLs; keep guesses only if they load.
+    const hosts = docsHosts(domain, guesses);
+    const [{ pages, indexes }, live] = await Promise.all([findDocPages(hosts), liveUrls(guesses)]);
+    for (const i of indexes) emit({ type: "note", text: `Found the docs index ${i}` });
+    log.aliases = live.aliases;
+    const urls = [...new Set([...pages.map((p) => p.url), ...live.ok])].slice(0, 18);
+
+    // Read the top pages ourselves (URL context often skips listed pages) and hand the model their text.
+    // These count as opened: their content really was in front of the model.
+    const read = (await Promise.all(urls.slice(0, 8).map(async (u) => [u, await readPage(u)] as const))).filter((r): r is readonly [string, string] => !!r[1]);
+    for (const [u] of read) {
+      log.opened.push(u);
+      emit({ type: "fetch", url: u });
+    }
+    const rest = urls.filter((u) => !read.some(([r]) => r === u));
+    if (read.length || rest.length) {
+      const pagesText = read.map(([u, t]) => `=== Page: ${u} ===\n${t}`).join("\n\n");
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text:
+              (read.length ? `Here is the text of the provider's own docs pages (opened for you). Cite these exact URLs in "src" for claims they support:\n\n${pagesText}\n\n` : "") +
+              (rest.length ? `More pages you may read with URL context:\n${rest.join("\n")}` : ""),
+          },
+        ],
+      });
+    }
   }
 
   // Watchdog: Gemini sometimes sends the whole answer and then never closes the stream. Abort after a quiet
@@ -252,24 +283,36 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
     clearTimeout(idle);
     clearTimeout(hardCap);
   }
-  log.opened = [...opened];
+  log.opened = [...new Set([...log.opened, ...opened])];
   log.searches = [...searches];
   return { text, log };
 }
 
-/** Follows each URL's redirects (public pages only, 5s each) and maps requested → final URL when they differ. */
-async function resolveRedirects(urls: string[]): Promise<Record<string, string>> {
-  const pairs = await Promise.all(
+/** Checks guessed URLs (5s each): which load, and requested → final URL when they redirect. */
+async function liveUrls(urls: string[]): Promise<{ ok: string[]; aliases: Record<string, string> }> {
+  const checks = await Promise.all(
     urls.map(async (u) => {
       try {
         const res = await fetch(u, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(5000) });
-        return res.url && res.url !== u ? ([u, res.url] as const) : null;
+        return { u, ok: res.ok, final: res.url };
       } catch {
-        return null;
+        return { u, ok: false, final: u };
       }
     }),
   );
-  return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null));
+  return {
+    ok: checks.filter((c) => c.ok).map((c) => c.u),
+    aliases: Object.fromEntries(checks.filter((c) => c.ok && c.final && c.final !== c.u).map((c) => [c.u, c.final])),
+  };
+}
+
+function parsePlan(s: string): { domain?: string; urls: string[] } {
+  try {
+    const o = JSON.parse(s.slice(s.indexOf("{"), s.lastIndexOf("}") + 1)) as { domain?: unknown; urls?: unknown };
+    return { domain: typeof o.domain === "string" ? o.domain : undefined, urls: parseUrls(JSON.stringify(o.urls ?? [])).slice(0, 6) };
+  } catch {
+    return { urls: parseUrls(s).slice(0, 6) };
+  }
 }
 
 function parseUrls(s: string): string[] {

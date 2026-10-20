@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     g.hands_on ||= { text: "Unknown", days: 0.5 };
     g.waiting ||= { best: "Unknown", normal: "Unknown", worst: "Unknown", days: 1 };
     for (const k of ["cases", "steps", "blockers", "agent_can", "you_must", "unverified", "sources"] as const) g[k] ||= [];
+    g.facts = Array.isArray(g.facts) ? g.facts.filter((f) => f && typeof f.q === "string" && typeof f.a === "string") : [];
     g._generated = true;
     g.checked = new Date().toISOString().slice(0, 10);
 
@@ -65,7 +66,13 @@ export async function POST(req: Request) {
     const dur = (v: unknown) => (typeof v === "string" && v.trim().length > 0 && v.length <= 28 ? v.trim() : "Unknown");
     const badDur = [g.hands_on.text, g.waiting.best, g.waiting.normal, g.waiting.worst].some((v) => dur(v) === "Unknown" && v !== "Unknown");
     g.hands_on.text = dur(g.hands_on.text);
-    g.waiting = { ...g.waiting, best: dur(g.waiting.best), normal: dur(g.waiting.normal), worst: dur(g.waiting.worst) };
+    // "None" is ambiguous (no approval step? or unknown?). Only an explicit "No wait" means no wait.
+    const wait = (v: unknown) => {
+      const t = dur(v);
+      return /^none$/i.test(t) ? "Unknown" : /^(no wait|0( days?)?)$/i.test(t) ? "No wait" : t;
+    };
+    g.waiting = { ...g.waiting, best: wait(g.waiting.best), normal: wait(g.waiting.normal), worst: wait(g.waiting.worst) };
+    if ([g.waiting.best, g.waiting.normal, g.waiting.worst].every((w) => w === "No wait")) g.waiting.days = 0;
     if (badDur) g.unverified.push("The agent didn't give a clear time range for some durations; they show as Unknown.");
 
     // Evidence rules, enforced here rather than trusted from the model:
@@ -76,7 +83,7 @@ export async function POST(req: Request) {
     const wasOpened = (u: string) => opened.has(urlKey(u)) || opened.has(aliases.get(urlKey(u)) ?? "");
     let downgraded = 0;
     const rejected = new Set<string>();
-    for (const claim of [...g.steps, ...g.blockers, ...g.cases]) {
+    for (const claim of [...g.steps, ...g.blockers, ...g.cases, ...g.facts]) {
       const ev: Evidence = claim.ev === "sourced" && claim.src && wasOpened(claim.src) ? "sourced" : "uncertain";
       if (claim.ev !== ev) {
         downgraded++;
@@ -85,6 +92,12 @@ export async function POST(req: Request) {
       claim.ev = ev;
       if (ev !== "sourced") delete claim.src;
     }
+    // The waiting time is a claim too: Sourced only with an opened page behind it.
+    const waitSourced = !!g.waiting.src && wasOpened(g.waiting.src);
+    g.waiting.ev = waitSourced ? "sourced" : "uncertain";
+    if (!waitSourced) delete g.waiting.src;
+    if (g.waiting.ev === "uncertain" && g.waiting.normal !== "Unknown") g.unverified.push("The waiting time is the agent's estimate; no page it opened states it.");
+
     // Sources list: only pages that were opened. Anything the model listed without opening is dropped.
     g.sources = g.sources.filter((s) => s.u && wasOpened(s.u));
     for (const u of log.opened) if (!g.sources.some((s) => urlKey(s.u) === urlKey(u))) g.sources.push({ t: u, u });

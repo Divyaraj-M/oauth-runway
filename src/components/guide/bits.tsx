@@ -1,4 +1,4 @@
-import { ClockIcon, RefreshCwIcon } from "lucide-react";
+import { ClockIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,14 +18,20 @@ export const tag = "rounded-md px-2.5 font-semibold";
 /** `src` (generated guides) is the page the agent opened for this claim; the badge links to it. */
 export function EvidenceBadge({ ev, src }: { ev: Evidence; src?: string }) {
   const k: Evidence = EVIDENCE_LABEL[ev] ? ev : "uncertain";
-  if (src && k === "sourced")
+  if (src && k === "sourced") {
+    let host = src;
+    try {
+      host = new URL(src).hostname.replace(/^www\./, "");
+    } catch {}
     return (
       <Badge asChild variant="outline" className={cn(tag, EV_CLASS[k], "hover:underline")}>
-        <a href={src} target="_blank" rel="noopener noreferrer" title={src}>
-          {EVIDENCE_LABEL[k]}
+        <a href={src} target="_blank" rel="noopener noreferrer" title={`Read on ${src}`}>
+          {EVIDENCE_LABEL[k]} · {host}
+          <ExternalLinkIcon />
         </a>
       </Badge>
     );
+  }
   return (
     <Badge variant="outline" className={cn(tag, EV_CLASS[k])}>
       {EVIDENCE_LABEL[k]}
@@ -52,13 +58,22 @@ export function LevelBadge({ n }: { n: 1 | 2 | 3 | 4 }) {
   );
 }
 
-export function Freshness({ g }: { g: Guide }) {
+/** Reviewed guides: the date checked by hand. Generated guides: when the provider's pages were read (at generation). */
+export function Freshness({ g, pagesRead }: { g: Guide; pagesRead?: number }) {
   if (g._generated)
     return (
-      <Badge variant="outline" className={cn(tag, "text-muted-foreground")}>
-        <ClockIcon />
-        {g.checked ? `Generated ${fmtDate(g.checked)}` : "Generated just now"}
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" tabIndex={0} className={cn(tag, "text-muted-foreground")}>
+            <ClockIcon />
+            Researched {g.checked ? fmtDate(g.checked) : "just now"}
+            {pagesRead !== undefined && ` · ${pagesRead} page${pagesRead === 1 ? "" : "s"} read`}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-64">
+          The agent opened the provider&apos;s pages on this date while writing the guide. See the Sources tab for exactly which ones.
+        </TooltipContent>
+      </Tooltip>
     );
   return (
     <Tooltip>

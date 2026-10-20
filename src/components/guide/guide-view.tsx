@@ -43,6 +43,7 @@ const WHO_CLASS: Record<Who, string> = {
 // "Your case" first: which path applies to you decides everything else.
 const TABS = [
   ["case", "Your case"],
+  ["details", "Setup details"],
   ["steps", "Steps"],
   ["blockers", "Blockers"],
   ["roles", "Who does what"],
@@ -61,6 +62,7 @@ async function copy(text: string, msg: string) {
 export function GuideView({
   guide: g,
   logo,
+  research,
   onRemove,
   onShare,
   guideId,
@@ -78,8 +80,12 @@ export function GuideView({
 }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
-  const total = (g.hands_on.days || 0) + (g.waiting.days || 0);
-  const workPct = total ? Math.max(1.5, (g.hands_on.days / total) * 100) : 50;
+  // "No wait" (confirmed) and "Not known" are different answers; older drafts used a bare "None", which is treated as unknown.
+  const noWait = /^(no wait|0( days?)?)$/i.test(g.waiting.normal.trim());
+  const unknownWait = /^(none|unknown|not known)$/i.test(g.waiting.normal.trim());
+  const waitLabel = (v: string) => (/^(no wait|0( days?)?)$/i.test(v.trim()) ? "No wait" : /^(none|unknown|not known)$/i.test(v.trim()) ? "Not known" : v);
+  const total = (g.hands_on.days || 0) + (noWait ? 0 : g.waiting.days || 0);
+  const workPct = noWait ? 100 : unknownWait ? 100 : total ? Math.max(1.5, (g.hands_on.days / total) * 100) : 50;
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
@@ -114,7 +120,7 @@ export function GuideView({
             <Badge variant="secondary" className={tag}>
               {g._generated ? "Live draft" : "Reviewed by hand"}
             </Badge>
-            <Freshness g={g} />
+            <Freshness g={g} pagesRead={research?.opened.length} />
           </div>
           <div className="flex items-center gap-3">
             <AppLogo name={g.app} logo={logo} />
@@ -134,13 +140,17 @@ export function GuideView({
             <p className="text-xs text-muted-foreground">{l.desc}</p>
           </div>
           <div className="flex flex-col gap-2 border-t pt-4">
-            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label="Your work compared with waiting time">
+            <div
+              className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="img"
+              aria-label={noWait ? "All your work, no waiting" : unknownWait ? "Waiting time not known" : "Your work compared with waiting time"}
+            >
               <div className="h-full bg-primary" style={{ width: `${workPct}%` }} />
-              <div className={cn("h-full flex-1", lc.bgSoft)} />
+              {!noWait && !unknownWait && <div className={cn("h-full flex-1", lc.bgSoft)} />}
             </div>
             <div className="tnum grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-0.5">
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title="From creating the app to a first working connection">
                   <span className="size-1.5 rounded-full bg-primary" />
                   Your work
                 </span>
@@ -151,12 +161,18 @@ export function GuideView({
                   <span className={cn("size-1.5 rounded-full", lc.bgSoft)} />
                   Waiting on {g.provider}
                 </span>
-                <span className="font-semibold">{g.waiting.normal}</span>
+                <span className={cn("font-semibold", unknownWait && "text-muted-foreground")}>{waitLabel(g.waiting.normal)}</span>
+                {g.waiting.ev && !unknownWait && <EvidenceBadge ev={g.waiting.ev} src={g.waiting.src} />}
               </div>
             </div>
             <p className="tnum text-xs text-muted-foreground">
-              Best {g.waiting.best} · Worst {g.waiting.worst}
+              {noWait
+                ? "No approval step for this case."
+                : unknownWait
+                  ? "Not known: plan for a review until the provider confirms there's none."
+                  : `Best ${waitLabel(g.waiting.best)} · Worst ${waitLabel(g.waiting.worst)}`}
             </p>
+            <p className="text-xs text-muted-foreground">Your work = creating the app to a first working connection.</p>
           </div>
         </Card>
       </header>
@@ -170,7 +186,7 @@ export function GuideView({
       <Tabs defaultValue="case" {...stagger()} className="enter gap-4 pt-6">
         <div className="overflow-x-auto">
           <TabsList className="h-9">
-            {TABS.map(([k, n]) => (
+            {TABS.filter(([k]) => k !== "details" || g.facts?.length).map(([k, n]) => (
               <TabsTrigger key={k} value={k} className="px-3">
                 {n}
               </TabsTrigger>
@@ -234,6 +250,24 @@ export function GuideView({
           </Card>
         </TabsContent>
 
+        {!!g.facts?.length && (
+          <TabsContent value="details">
+            <Card className="py-0">
+              <dl className="divide-y">
+                {g.facts.map((f) => (
+                  <div key={f.q} className="flex flex-col gap-1.5 p-4 sm:flex-row sm:gap-6">
+                    <dt className="text-sm font-medium sm:w-72 sm:shrink-0">{f.q}</dt>
+                    <dd className="flex min-w-0 flex-1 flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <span>{f.a}</span>
+                      <EvidenceBadge ev={f.ev} src={f.src} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Card>
+          </TabsContent>
+        )}
+
         <TabsContent value="blockers" className="flex flex-col gap-2">
           {g.blockers.map((b) => (
             <Alert key={b.text} role="note">
@@ -254,9 +288,12 @@ export function GuideView({
             </div>
             <ul className="flex flex-col gap-2 text-sm">
               {g.agent_can.map((x) => (
-                <li key={x} className="flex gap-2">
+                <li key={x} className="flex items-start gap-2">
                   <CheckIcon className="mt-0.5 size-4 shrink-0 text-l1" />
-                  <span>{x}</span>
+                  <span className="flex-1">{x}</span>
+                  <Button variant="outline" size="xs" className="shrink-0" onClick={() => openChat(`Do this for me now: ${x}. Give me the finished result I can paste.`)}>
+                    Do it
+                  </Button>
                 </li>
               ))}
             </ul>
