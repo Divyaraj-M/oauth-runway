@@ -56,3 +56,17 @@ Labels follow the app: **Tested** = done first-hand, **Sourced** = on a page act
 | Linear | First run hung after the full answer arrived | Gemini sometimes never closes the stream. A watchdog now ends it after 15 s of silence and keeps the answer |
 
 Takeaway: the evidence rules hold (nothing generated is ever Tested, and Sourced requires an opened page), but on the free tier with no Google Search, generated guides are mostly Unverified. A Claude key or a paid Gemini key with Search produces better-sourced drafts.
+
+## Second pass (Oct 20, 2026): labels must match what the claim says
+
+A developer review of the live guides found evidence labels that didn't match their claims. Fixes, now enforced in code (`src/lib/evidence.ts`) and applied to the reviewed guides by hand:
+
+| Finding | Fix |
+|---|---|
+| Answers saying "not explicitly detailed" were labelled Sourced | Any answer that says it wasn't found is **Not documented** (new label), never Sourced |
+| Claims that something doesn't exist ("no review", "no wait", "neither scope triggers a review") were Sourced | A page can't prove an absence: these are **Not documented**. Five such claims in the reviewed guides were rewritten to state only what the page says |
+| Composio's redirect URL was "Sourced" to the provider's docs | Composio facts can only be Sourced to docs.composio.dev. The research now reads Composio's two auth pages on every run |
+| **Wrong Composio callback URL** | Composio's current docs give `https://backend.composio.dev/api/v3/toolkits/auth/callback` (white-label authentication page); the older `/api/v1/auth-apps/add` was removed from the Gmail guide and the prompt |
+| Reviewed guides had no Setup details and Sourced badges without links | All four now answer the 8 setup questions; every Sourced claim links to its page. New sources read: Google OAuth 2.0 (refresh tokens expire after 7 days in Testing), Slack token rotation (tokens never expire without rotation; 12 h with it) |
+| Zoom rated Level 2 though strangers can't connect before review | Level 2 is now "Review to go public": works for you now, a review before others can connect or before a listing |
+| Clay titled "Clay OAuth app" though it uses API keys | Guides record `oauth_supported`; apps without OAuth are titled "connection" with a notice. Old-pipeline drafts (Clay, Pipedrive, first Calendly) were moved back to draft |

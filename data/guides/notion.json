@@ -10,22 +10,24 @@
     "days": 0.05
   },
   "waiting": {
-    "best": "None",
-    "normal": "None to unclear",
+    "best": "Unknown",
+    "normal": "Unknown",
     "worst": "Unknown",
-    "days": 0.5
+    "days": 1
   },
   "start_now": "Low risk to wait. Have a privacy policy, terms page and support email ready before you start.",
   "cases": [
     {
       "case": "Your own workspace (internal integration)",
-      "outcome": "Token-based, no OAuth, no review",
-      "ev": "sourced"
+      "outcome": "Uses an internal integration token instead of OAuth",
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "case": "Any Notion workspace (public integration)",
       "outcome": "OAuth client issued on save",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "case": "Review before other workspaces can connect",
@@ -38,39 +40,46 @@
       "who": "you",
       "title": "Create a new integration and choose Public",
       "detail": "From your Notion integrations dashboard.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "who": "you",
       "title": "Fill website, privacy policy, terms and support email",
       "detail": "Needed before the client ID and secret appear.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "who": "agent",
       "title": "Choose capabilities",
       "detail": "Notion uses capability toggles (read, update, insert content) instead of OAuth scopes.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "who": "you",
       "title": "Add your redirect URL and copy credentials",
       "detail": "Users pick which pages to share during consent.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     }
   ],
   "blockers": [
     {
       "text": "The authorization URL only appears after the public connection is submitted for review (Notion docs). How long that takes isn't stated.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "text": "Installation scope (any workspace or selected ones) is set when you create the connection and can't be changed later.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     },
     {
       "text": "Users choose pages at consent time. Your agent sees nothing the user didn't share.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
     }
   ],
   "agent_can": [
@@ -87,6 +96,14 @@
   ],
   "sources": [
     {
+      "t": "Composio: Managed vs custom auth",
+      "u": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "t": "Composio: White-label authentication (callback URL)",
+      "u": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
       "t": "Notion: Authorization",
       "u": "https://developers.notion.com/reference/authorization"
     },
@@ -97,6 +114,52 @@
     {
       "t": "Classmethod: trying a Notion public integration",
       "u": "https://dev.classmethod.jp/articles/try-notion-api-with-public-integration/"
+    }
+  ],
+  "facts": [
+    {
+      "q": "Do you need a paid plan to create the OAuth app, or for any feature the agent needs (e.g. webhooks)?",
+      "a": "Not documented in the pages read.",
+      "ev": "absent"
+    },
+    {
+      "q": "Is there a sandbox or test environment, or do you test against a real account?",
+      "a": "Not documented: there's no separate sandbox in the pages read; test with your own workspace.",
+      "ev": "absent"
+    },
+    {
+      "q": "Is there any review, approval or user cap before other people's accounts can connect?",
+      "a": "Notion's docs say the authorization URL appears only after a public connection is submitted for review. How long the review takes isn't published.",
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
+    },
+    {
+      "q": "Which scopes cover what the agent must do, and does any of them trigger a review?",
+      "a": "Notion uses capabilities (read, update, insert content) instead of OAuth scopes, and users choose which pages to share at consent.",
+      "ev": "sourced",
+      "src": "https://developers.notion.com/docs/authorization"
+    },
+    {
+      "q": "What redirect URL goes in when using Composio, and is localhost allowed while building?",
+      "a": "Use Composio's callback, https://backend.composio.dev/api/v3/toolkits/auth/callback. Composio's dashboard shows the exact redirect URI for your auth config.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
+      "q": "How long do access tokens last, and how are they refreshed?",
+      "a": "Not documented in the pages read.",
+      "ev": "absent"
+    },
+    {
+      "q": "Whose name do users see on the consent screen?",
+      "a": "With Composio's managed app: \"Composio wants to access your account\". With your own OAuth app: your app's name.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "q": "If you switch from Composio's managed app to your own, do users have to reconnect?",
+      "a": "Not documented by Composio. Each toolkit has its own auth config; plan for users to reconnect, since tokens belong to the OAuth app that issued them.",
+      "ev": "absent"
     }
   ]
 }

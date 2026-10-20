@@ -10,7 +10,7 @@ import { getGuide } from "@/lib/db";
 export async function generateMetadata({ params }: PageProps<"/g/[id]">): Promise<Metadata> {
   const g = await getGuide((await params).id);
   // Drafts are private: don't put their title or verdict in link previews.
-  return g && g.review.status !== "draft" ? { title: `${g.guide.app} OAuth app · OAuth Runway`, description: g.guide.verdict } : {};
+  return g && g.review.status !== "draft" ? { title: `${g.guide.app} ${g.guide.oauth_supported === false ? "connection" : "OAuth app"} · OAuth Runway`, description: g.guide.verdict } : {};
 }
 
 // `params` is read inside Suspense so the shell renders instantly.

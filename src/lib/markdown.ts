@@ -6,7 +6,7 @@ const ev = (e: Evidence, src?: string) => (src && e === "sourced" ? `[Sourced]($
 export function toMarkdown(g: Guide): string {
   const l = levelOf(g.difficulty);
   const L: string[] = [];
-  L.push(`# ${g.app} OAuth app — setup & approval`);
+  L.push(`# ${g.app} ${g.oauth_supported === false ? "connection (no OAuth offered)" : "OAuth app"} — setup & approval`);
   if (g._generated) L.push(`> Live draft from the agent. Unverified.`);
   L.push(`**Difficulty:** Level ${l.n} of 4 · ${l.name}`, ``, g.verdict, ``);
   L.push(`**Your work (create the app → first working connection):** ${g.hands_on.text}  `, `**Waiting:** best ${g.waiting.best} · normal ${g.waiting.normal} · worst ${g.waiting.worst}`, ``);

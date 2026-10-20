@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, SearchIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, SearchIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -347,6 +348,7 @@ function Library({
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const router = useRouter();
   const drafts = Object.fromEntries(community.map((d) => [d.slug, d]));
 
   // Catalog apps, plus generated guides for apps the catalog doesn't list (e.g. Clay), at the end.
@@ -404,7 +406,7 @@ function Library({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-card" role="list">
+      <div className="overflow-hidden rounded-xl border bg-card">
         {rows.length === 0 ? (
           <Empty className="py-12">
             <EmptyHeader>
@@ -416,19 +418,92 @@ function Library({
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="divide-y">
-            {rows.map((c, idx) => {
-              const g = guides[c.key];
-              const d = draftOf(c);
-              return g ? (
-                <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
-              ) : d ? (
-                <DraftRow key={c.key} c={c} d={d} logo={logos[c.key] ?? d.logo ?? undefined} />
-              ) : (
-                <UnratedRow key={c.key} c={c} i={showAll ? idx : -1} logo={logos[c.key]} onGenerate={onGenerate} />
-              );
-            })}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-10 px-4">App</TableHead>
+                <TableHead className="h-10">Level</TableHead>
+                <TableHead className="hidden h-10 sm:table-cell">Your work</TableHead>
+                <TableHead className="hidden h-10 sm:table-cell">Wait</TableHead>
+                <TableHead className="h-10">Status</TableHead>
+                <TableHead className="hidden h-10 md:table-cell">Updated</TableHead>
+                <TableHead className="h-10 px-4" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((c) => {
+                const g = guides[c.key];
+                const d = draftOf(c);
+                const href = g ? `/guides/${c.key}` : d ? `/g/${d.id}` : null;
+                const level = g ? levelOf(g.difficulty) : d ? levelOf(d.difficulty) : null;
+                const work = g ? g.hands_on.text : d?.work;
+                const wait = g ? g.waiting.normal : d?.wait;
+                const date = g ? (g.checked ?? "2026-10-20") : d?.createdAt.slice(0, 10);
+                return (
+                  <TableRow key={c.key} className={cn(href && "cursor-pointer")} onClick={href ? () => router.push(href) : undefined}>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <AppLogo name={c.app} logo={logos[c.key] ?? d?.logo ?? undefined} />
+                        <div className="flex min-w-0 flex-col">
+                          {href ? (
+                            <Link href={href} className="truncate font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                              {c.app}
+                            </Link>
+                          ) : (
+                            <span className="truncate font-medium">{c.app}</span>
+                          )}
+                          <span className="truncate text-xs text-muted-foreground">{c.cat}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {level ? (
+                        <div className="flex flex-col gap-1">
+                          <span className={cn("text-xs font-medium", LEVEL_CLASS[level.n].text)}>
+                            L{level.n} · {level.name}
+                          </span>
+                          <div className="w-14">
+                            <LevelMeter n={level.n} />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not rated</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="tnum hidden sm:table-cell">{work ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="tnum hidden whitespace-normal sm:table-cell">{wait ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell>
+                      {g ? (
+                        <Badge variant="secondary" className="rounded-md">
+                          Reviewed
+                        </Badge>
+                      ) : d?.status === "approved" ? (
+                        <Badge variant="outline" className="rounded-md border-l1/30 bg-l1/10 text-l1">
+                          Approved
+                        </Badge>
+                      ) : d ? (
+                        <Badge variant="outline" className="rounded-md border-l3/30 bg-l3/10 text-l3">
+                          Pending approval
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No guide yet</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="tnum hidden text-muted-foreground md:table-cell">{date ? fmtDate(date) : "—"}</TableCell>
+                    <TableCell className="px-4 text-right">
+                      {href ? (
+                        <ChevronRightIcon className="ml-auto size-4 text-muted-foreground" />
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => onGenerate(c.app)}>
+                          Generate
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -447,133 +522,5 @@ function Library({
 
       <NewAppDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={onNewApp} />
     </section>
-  );
-}
-
-function ReviewedRow({ c, g, logo }: { c: CatalogEntry; g: Guide; logo?: LogoInfo }) {
-  const l = levelOf(g.difficulty);
-  return (
-    <Item asChild className="rounded-none px-4 py-4" role="listitem">
-      <Link href={`/guides/${c.key}`}>
-        <ItemMedia>
-          <AppLogo name={c.app} logo={logo} />
-        </ItemMedia>
-        <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
-            <ItemTitle>
-              {c.app}
-              <span className="text-xs font-normal text-muted-foreground">{c.cat}</span>
-            </ItemTitle>
-            <div className="flex items-center gap-2">
-              <div className="w-14 shrink-0">
-                <LevelMeter n={l.n} />
-              </div>
-              <span className={cn("text-xs font-medium", LEVEL_CLASS[l.n].text)}>
-                L{l.n} · {l.name}
-              </span>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <ItemDescription className="line-clamp-1">{g.verdict.split(". ")[0]}.</ItemDescription>
-            <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <ClockIcon className="size-3.5" />
-                Work {g.hands_on.text} · Wait {g.waiting.normal}
-              </span>
-              <span>Updated {fmtDate(g.checked ?? "2026-10-20")}</span>
-            </div>
-          </div>
-        </ItemContent>
-        <ItemActions className="hidden sm:flex">
-          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-150 ease-(--ease-out) group-hover/item:translate-x-0.5" />
-        </ItemActions>
-      </Link>
-    </Item>
-  );
-}
-
-/** A guide this browser generated: real level, but marked Draft and never presented as reviewed. */
-function DraftRow({ c, d, logo }: { c: CatalogEntry; d: DraftSummary; logo?: LogoInfo }) {
-  const l = levelOf(d.difficulty);
-  return (
-    <Item asChild className="rounded-none px-4 py-4" role="listitem">
-      <Link href={`/g/${d.id}`}>
-        <ItemMedia>
-          <AppLogo name={c.app} logo={logo} />
-        </ItemMedia>
-        <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
-            <ItemTitle>
-              {c.app}
-              {d.status === "approved" ? (
-                <Badge variant="outline" className="rounded-md border-l1/30 bg-l1/10 px-1.5 text-[11px] text-l1">
-                  Approved
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="rounded-md border-l3/30 bg-l3/10 px-1.5 text-[11px] text-l3">
-                  Pending approval
-                </Badge>
-              )}
-            </ItemTitle>
-            <div className="flex items-center gap-2">
-              <div className="w-14 shrink-0">
-                <LevelMeter n={l.n} />
-              </div>
-              <span className={cn("text-xs font-medium", LEVEL_CLASS[l.n].text)}>
-                L{l.n} · {l.name}
-              </span>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <ItemDescription className="line-clamp-1">{d.verdict.split(". ")[0]}.</ItemDescription>
-            <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <ClockIcon className="size-3.5" />
-                Work {d.work} · Wait {d.wait}
-              </span>
-              <span>
-                Generated {fmtDate(d.createdAt.slice(0, 10))} · {d.status === "approved" ? "reviewed" : "not reviewed yet"}
-              </span>
-            </div>
-          </div>
-        </ItemContent>
-        <ItemActions className="hidden sm:flex">
-          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-150 ease-(--ease-out) group-hover/item:translate-x-0.5" />
-        </ItemActions>
-      </Link>
-    </Item>
-  );
-}
-
-/** `i` ≥ 0 staggers the row in when "Show all" reveals it; filtering (frequent) never animates. */
-function UnratedRow({ c, i, logo, onGenerate }: { c: CatalogEntry; i: number; logo?: LogoInfo; onGenerate: (app: string) => void }) {
-  return (
-    <Item className={cn("rounded-none px-4 py-4", i >= 0 && "enter")} style={i >= 0 ? { ["--i" as string]: Math.min(i, 8) } : undefined} role="listitem">
-      <ItemMedia>
-        <AppLogo name={c.app} logo={logo} />
-      </ItemMedia>
-      <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
-        <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
-          <ItemTitle>
-            {c.app}
-            <span className="text-xs font-normal text-muted-foreground">{c.cat}</span>
-          </ItemTitle>
-          <div className="flex items-center gap-2">
-            <div className="w-14 shrink-0">
-              <LevelMeter n={0} />
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">Not rated yet</span>
-          </div>
-        </div>
-        <ItemDescription className="min-w-0 flex-1">
-          No reviewed guide yet. The agent can research a live draft{c.provider !== c.app ? ` (provider: ${c.provider})` : ""}.
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
-        <Button variant="outline" size="sm" onClick={() => onGenerate(c.app)}>
-          Generate guide
-        </Button>
-      </ItemActions>
-    </Item>
   );
 }

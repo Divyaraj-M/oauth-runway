@@ -19,8 +19,9 @@
   "cases": [
     {
       "case": "One Aircall account only (private app, API key)",
-      "outcome": "No review, no partnership needed",
-      "ev": "sourced"
+      "outcome": "Use an API key from your own account instead of OAuth; the partner program is for public apps",
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
     },
     {
       "case": "Many Aircall customers (public app, OAuth)",
@@ -30,7 +31,8 @@
     {
       "case": "Public marketplace listing",
       "outcome": "Only after 10 customers use the integration",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/build/"
     }
   ],
   "steps": [
@@ -38,7 +40,8 @@
       "who": "you",
       "title": "Apply to the Technology Partner Program",
       "detail": "Requires a live product with a company website.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
     },
     {
       "who": "agent",
@@ -74,7 +77,8 @@
       "who": "provider",
       "title": "Launch review and in-product publishing",
       "detail": "Submit a demo recording, help-center article, logo and screenshots. Aircall reviews them in 1–5 business days and publishes in 3–5. Publishing inside the dashboard is mandatory so admins can uninstall.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/build/"
     }
   ],
   "blockers": [
@@ -92,7 +96,8 @@
     },
     {
       "text": "Going quiet is risky: a plan with no reply is discarded after 1 month; during the build Aircall follows up monthly for 2 months, then decommissions your assets a month later. They expect completion within 6 months and a progress update every 2 months.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
     },
     {
       "text": "Webhooks are verified with a token in the payload, not a signature header. There is no revoke endpoint.",
@@ -120,6 +125,14 @@
   ],
   "sources": [
     {
+      "t": "Composio: Managed vs custom auth",
+      "u": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "t": "Composio: White-label authentication (callback URL)",
+      "u": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
       "t": "First-hand: a CRM's Aircall integration email thread, Aug 31 – Oct 19 2026",
       "u": ""
     },
@@ -134,6 +147,53 @@
     {
       "t": "Aircall: AI ecosystem developer guide",
       "u": "https://aircall.io/en-au/blog/tech/ai-ecosystem-developer-guide/"
+    }
+  ],
+  "facts": [
+    {
+      "q": "Do you need a paid plan to create the OAuth app, or for any feature the agent needs (e.g. webhooks)?",
+      "a": "You don't buy a plan: Aircall gives approved Technology Partners a trial developer account (4 months, extendable).",
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
+    },
+    {
+      "q": "Is there a sandbox or test environment, or do you test against a real account?",
+      "a": "Yes: a trial developer account plus separate dev and production OAuth apps, both created by Aircall.",
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
+    },
+    {
+      "q": "Is there any review, approval or user cap before other people's accounts can connect?",
+      "a": "Yes: partner approval, a plan review before accounts are created, then a launch review (demo and assets 1–5 business days, publication 3–5). A public marketplace listing only after 10 customers use it.",
+      "ev": "sourced",
+      "src": "https://developer.aircall.io/docs/launch-process"
+    },
+    {
+      "q": "Which scopes cover what the agent must do, and does any of them trigger a review?",
+      "a": "Not documented in the launch pages read; Aircall creates the OAuth app for you, so ask them in the app request email.",
+      "ev": "absent"
+    },
+    {
+      "q": "What redirect URL goes in when using Composio, and is localhost allowed while building?",
+      "a": "Use Composio's callback, https://backend.composio.dev/api/v3/toolkits/auth/callback (shown in Composio's dashboard). Aircall rejects localhost redirects (first-hand), so use a tunnel or staging URL, and email up to 5 redirect URIs.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
+      "q": "How long do access tokens last, and how are they refreshed?",
+      "a": "Not documented in the pages read.",
+      "ev": "absent"
+    },
+    {
+      "q": "Whose name do users see on the consent screen?",
+      "a": "With Composio's managed app: \"Composio wants to access your account\". With your own OAuth app: your app's name.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "q": "If you switch from Composio's managed app to your own, do users have to reconnect?",
+      "a": "Not documented by Composio. Each toolkit has its own auth config; plan for users to reconnect, since tokens belong to the OAuth app that issued them.",
+      "ev": "absent"
     }
   ]
 }

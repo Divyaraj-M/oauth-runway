@@ -20,17 +20,20 @@
     {
       "case": "Only your company's Google Workspace accounts (Internal app)",
       "outcome": "No Google review",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/13465431"
     },
     {
       "case": "Send email only (gmail.send, a 'sensitive' scope)",
       "outcome": "App verification, no security assessment",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     },
     {
       "case": "Read, modify or full mail access (restricted scopes)",
       "outcome": "Verification + CASA security assessment, revalidated every year",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     }
   ],
   "steps": [
@@ -38,31 +41,36 @@
       "who": "you",
       "title": "Create a Google Cloud project and enable the Gmail API",
       "detail": "Free. Needs a Google account.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/7454865"
     },
     {
       "who": "agent",
       "title": "Pick the smallest scope set for your features",
       "detail": "Map each feature to one scope. Drop anything you don't call; one restricted scope pulls the whole app into the strict track.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     },
     {
       "who": "you",
       "title": "Configure the consent screen",
       "detail": "App name, support email, logo, homepage, privacy policy URL, authorized domain. Internal vs External audience is chosen here.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/7454865"
     },
     {
       "who": "you",
       "title": "Create a Web OAuth client",
-      "detail": "Add your redirect URL (for Composio: https://backend.composio.dev/api/v1/auth-apps/add). Copy client ID and secret.",
-      "ev": "sourced"
+      "detail": "Add your redirect URL (for Composio: https://backend.composio.dev/api/v3/toolkits/auth/callback, shown in Composio's dashboard). Copy client ID and secret.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
     },
     {
       "who": "you",
       "title": "Test with up to 100 users while unverified",
       "detail": "Unverified apps show a warning screen and are limited to 100 new users. Fine for building, not for launch.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/7454865"
     },
     {
       "who": "agent",
@@ -74,7 +82,8 @@
       "who": "provider",
       "title": "Google reviews the app",
       "detail": "Brand check, then scope review. Restricted scopes add a CASA assessment by a Google-approved lab.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     }
   ],
   "blockers": [
@@ -84,15 +93,18 @@
     },
     {
       "text": "gmail.readonly, gmail.modify, gmail.compose and gmail.metadata are all restricted. There is no 'light' way to read mail.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     },
     {
       "text": "CASA assessment costs a few hundred to a few thousand dollars a year, from third-party estimates.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/13465431"
     },
     {
       "text": "Scopes in your code must match the consent screen, or users keep seeing the unverified-app warning.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
     },
     {
       "text": "Exact review times for restricted scopes are not published by Google.",
@@ -116,6 +128,18 @@
     "Assessment cost depends on the lab and tier"
   ],
   "sources": [
+    {
+      "t": "Composio: Managed vs custom auth",
+      "u": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "t": "Composio: White-label authentication (callback URL)",
+      "u": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
+      "t": "Google: OAuth 2.0 (token expiry)",
+      "u": "https://developers.google.com/identity/protocols/oauth2"
+    },
     {
       "t": "Google: Gmail API scopes (sensitivity of each scope)",
       "u": "https://developers.google.com/workspace/gmail/api/auth/scopes"
@@ -143,6 +167,55 @@
     {
       "t": "Composio: Google OAuth setup guide",
       "u": "https://composio.dev/auth/googleapps"
+    }
+  ],
+  "facts": [
+    {
+      "q": "Do you need a paid plan to create the OAuth app, or for any feature the agent needs (e.g. webhooks)?",
+      "a": "Restricted Gmail scopes need a yearly CASA security assessment by a third-party lab, which is paid (Google doesn't state the cost). Google's pages list no plan requirement for creating the OAuth client itself.",
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/13465431"
+    },
+    {
+      "q": "Is there a sandbox or test environment, or do you test against a real account?",
+      "a": "No separate sandbox. While unverified, the app works with real Google accounts behind a warning screen, limited to 100 new users.",
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/7454865"
+    },
+    {
+      "q": "Is there any review, approval or user cap before other people's accounts can connect?",
+      "a": "Yes. Unverified apps are capped at 100 new users. Sensitive scopes need app verification; restricted scopes add the CASA assessment. Internal (same-Workspace) apps are exempt.",
+      "ev": "sourced",
+      "src": "https://support.google.com/cloud/answer/7454865"
+    },
+    {
+      "q": "Which scopes cover what the agent must do, and does any of them trigger a review?",
+      "a": "gmail.send is sensitive (verification). gmail.readonly, gmail.modify, gmail.compose, gmail.metadata and https://mail.google.com/ are restricted (verification + CASA).",
+      "ev": "sourced",
+      "src": "https://developers.google.com/workspace/gmail/api/auth/scopes"
+    },
+    {
+      "q": "What redirect URL goes in when using Composio, and is localhost allowed while building?",
+      "a": "Use Composio's callback, https://backend.composio.dev/api/v3/toolkits/auth/callback. Composio's dashboard shows the exact redirect URI for your auth config.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
+      "q": "How long do access tokens last, and how are they refreshed?",
+      "a": "Google doesn't state an exact access-token lifetime (\"limited lifetimes\"). Refresh tokens expire after 7 days while the app is in Testing with external users, and stop working after 6 months unused.",
+      "ev": "sourced",
+      "src": "https://developers.google.com/identity/protocols/oauth2"
+    },
+    {
+      "q": "Whose name do users see on the consent screen?",
+      "a": "With Composio's managed app: \"Composio wants to access your account\". With your own OAuth app: your app's name.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "q": "If you switch from Composio's managed app to your own, do users have to reconnect?",
+      "a": "Not documented by Composio. Each toolkit has its own auth config; plan for users to reconnect, since tokens belong to the OAuth app that issued them.",
+      "ev": "absent"
     }
   ]
 }

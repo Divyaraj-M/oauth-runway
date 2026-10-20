@@ -18,7 +18,8 @@ Research the provider's own developer docs first (app creation, scopes or permis
 
 Focus on what docs hide: hands-on time vs waiting time, review gates, scopes that trigger review, partner programs, paid-plan requirements, domain or policy requirements, and paths that avoid review.
 
-Difficulty levels: "self" = credentials in minutes, no review for the common case; "review" = works now, review only to list publicly; "audit" = verification plus a third-party security assessment for some permissions; "partner" = a person at the provider must approve and create the app.
+Difficulty levels (pick by the strictest gate on the developer's path): "self" = credentials in minutes and other people's accounts can connect with no review; "review" = works for your own account right away, but other people's accounts can connect only after a provider review (or only a public listing needs review); "audit" = verification plus a third-party security assessment for some permissions; "partner" = a person at the provider must approve you and create the app.
+If the app has no OAuth for third-party developers (API keys or personal tokens only), set "oauth_supported": false, say so in the first sentence of the verdict, and use "self".
 
 Field rules:
 - hands_on: the developer's own work from creating the OAuth app to a first working end-to-end connection (consent, token, one API call). hands_on.text is ONLY a short range like "1–2 hours" (no sentence; put details in steps).
@@ -28,7 +29,9 @@ Field rules:
 - cases: paths, not outcomes. "case" = a variation of the developer's situation that changes the path (e.g. "Your agent writes: books meetings for your customers' users" vs "reads only", "only your own company's accounts" vs "your customers", "listed in the provider's marketplace"). "outcome" = what changes: scopes, review, plan, extra time. Never write success stories ("Successfully implemented…").
 - facts: answer every question below, in order, with a direct answer ("Yes, …" / "No, …" / "Not documented") and the specifics (scope names, plan names, token lifetimes):
 ${SETUP_QUESTIONS.map((q, i) => `  ${i + 1}. ${q}`).join("\n")}
-  Composio context you may rely on (label "uncertain" unless a page you opened confirms it): with your own OAuth app the redirect URL is Composio's callback https://backend.composio.dev/api/v1/auth-apps/add; users see your app's name on the consent screen with your own app, and Composio's with Composio's managed app; tokens belong to the OAuth app that issued them, so moving users to a different app means they reconnect.
+  For the Composio questions (redirect URL, consent screen, switching), use the Composio docs pages you were given and cite them (docs.composio.dev) in "src"; never cite the provider's docs for a Composio fact. If a Composio page doesn't say it, answer "Not documented".
+- Every answer names the specifics (exact scope names, plan names, durations). If you didn't find them, the answer is "Not documented" with ev "uncertain"; never write vague answers like "specific scopes are required".
+- Claims that something does NOT exist (no review, no wait, no cap) can't be proven by a page: write them as "No … documented" and use ev "uncertain".
 - agent_can: concrete things an AI agent can produce for this developer right now, each starting with a verb, e.g. "Write the exact scope list for reading events and creating bookings", "Prefill the app form: name, description, redirect URL, scopes", "Draft the privacy policy section the provider asks for". Not vague help.
 
 Evidence rules, strictly:
@@ -39,7 +42,7 @@ Evidence rules, strictly:
 - Never ask for or include credentials, client secrets or tokens.
 
 When you have finished researching, reply with ONLY one JSON object, no prose before or after:
-{"app":string (the product's plain name, e.g. "Clay", not a URL or "X API"),"provider":string,"domain":string (provider's main website domain, e.g. "zoom.us"),"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences, starting with your reading of their case),
+{"app":string (the product's plain name, e.g. "Clay", not a URL or "X API"),"oauth_supported":boolean,"provider":string,"domain":string (provider's main website domain, e.g. "zoom.us"),"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences, starting with your reading of their case),
 "hands_on":{"text":string,"days":number},"waiting":{"best":string,"normal":string,"worst":string,"days":number,"src"?:string},
 "start_now":string,
 "cases":[{"case":string,"outcome":string,"ev":"sourced"|"uncertain","src"?:string}] (2-4),

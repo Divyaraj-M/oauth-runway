@@ -1,5 +1,5 @@
-/** Evidence label on every claim (`src`, on generated guides, is the opened page that backs a "sourced" claim). "uncertain" renders as "Unverified". A generated guide can never be "tested". */
-export type Evidence = "tested" | "sourced" | "uncertain";
+/** "absent" = looked, the docs don't say (shown as "Not documented"). Evidence label on every claim (`src`, on generated guides, is the opened page that backs a "sourced" claim). "uncertain" renders as "Unverified". A generated guide can never be "tested". */
+export type Evidence = "tested" | "sourced" | "uncertain" | "absent";
 export type Difficulty = "self" | "review" | "audit" | "partner";
 export type Who = "agent" | "you" | "provider";
 
@@ -18,6 +18,8 @@ export type Guide = {
   cases: { case: string; outcome: string; ev: Evidence; src?: string }[];
   steps: { who: Who; title: string; detail: string; ev: Evidence; src?: string }[];
   blockers: { text: string; ev: Evidence; src?: string }[];
+  /** False when the app has no OAuth for third-party developers (API keys only). */
+  oauth_supported?: boolean;
   /** Fixed setup questions every generated guide answers (paid plan, sandbox, review/user cap, scopes, redirect, tokens, consent screen, switching from Composio's managed app). */
   facts?: { q: string; a: string; ev: Evidence; src?: string }[];
   agent_can: string[];

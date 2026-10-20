@@ -4,6 +4,7 @@ import { CATALOG } from "@/lib/guides";
 import { resolveLogoWithin } from "@/lib/logos";
 import { GENERATE_SYSTEM, generateUser } from "@/lib/prompts";
 import { credentialsFor, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
+import { checkEvidence } from "@/lib/evidence";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Evidence, GeneratePayload, Guide } from "@/lib/types";
 import { normName } from "@/lib/utils";
@@ -84,7 +85,10 @@ export async function POST(req: Request) {
     let downgraded = 0;
     const rejected = new Set<string>();
     for (const claim of [...g.steps, ...g.blockers, ...g.cases, ...g.facts]) {
-      const ev: Evidence = claim.ev === "sourced" && claim.src && wasOpened(claim.src) ? "sourced" : "uncertain";
+      const opened = claim.ev === "sourced" && !!claim.src && wasOpened(claim.src);
+      const text = "a" in claim ? claim.a : "text" in claim ? claim.text : "outcome" in claim ? `${claim.case} ${claim.outcome}` : `${claim.title} ${claim.detail}`;
+      // An opened page is necessary but not enough: the label also has to match what the claim says.
+      const ev: Evidence = checkEvidence(text, opened ? "sourced" : claim.ev === "absent" ? "absent" : "uncertain", claim.src);
       if (claim.ev !== ev) {
         downgraded++;
         if (claim.src) rejected.add(claim.src);
@@ -94,8 +98,9 @@ export async function POST(req: Request) {
     }
     // The waiting time is a claim too: Sourced only with an opened page behind it.
     const waitSourced = !!g.waiting.src && wasOpened(g.waiting.src);
-    g.waiting.ev = waitSourced ? "sourced" : "uncertain";
-    if (!waitSourced) delete g.waiting.src;
+    // "No wait" claims an absence, which no page can prove: Not documented rather than Sourced.
+    g.waiting.ev = g.waiting.normal === "No wait" ? "absent" : checkEvidence(g.waiting.normal, waitSourced ? "sourced" : "uncertain", g.waiting.src);
+    if (g.waiting.ev !== "sourced") delete g.waiting.src;
     if (g.waiting.ev === "uncertain" && g.waiting.normal !== "Unknown") g.unverified.push("The waiting time is the agent's estimate; no page it opened states it.");
 
     // Sources list: only pages that were opened. Anything the model listed without opening is dropped.

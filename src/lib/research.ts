@@ -91,6 +91,12 @@ export async function research(args: ResearchArgs): Promise<{ text: string; log:
 
 const FALLBACK_GEMINI = "gemini-3.5-flash-lite";
 
+/** Composio's docs on bringing your own OAuth app: redirect URI, consent-screen branding. */
+const COMPOSIO_PAGES = [
+  "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app.md",
+  "https://docs.composio.dev/docs/authentication/white-labeling-authentication.md",
+];
+
 /** 429/500/503 from Gemini, our own timeouts, or the network dropping. */
 const isBusyOrSlow = (err: unknown) =>
   (err instanceof GeminiApiError && [429, 500, 503].includes(err.status)) || isTimeout(err) || isNetwork(err);
@@ -201,17 +207,19 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
     for (const i of indexes) emit({ type: "note", text: `Found the docs index ${i}` });
     log.aliases = live.aliases;
     const urls = [...new Set([...pages.map((p) => p.url), ...live.ok])].slice(0, 18);
+    // Composio's own pages answer the Composio questions (redirect URL, consent screen); always read them.
+    const composio = (await Promise.all(COMPOSIO_PAGES.map(async (u) => [u, await readPage(u, 5000)] as const))).filter((r): r is readonly [string, string] => !!r[1]);
 
     // Read the top pages ourselves (URL context often skips listed pages) and hand the model their text.
     // These count as opened: their content really was in front of the model.
     const read = (await Promise.all(urls.slice(0, 8).map(async (u) => [u, await readPage(u)] as const))).filter((r): r is readonly [string, string] => !!r[1]);
-    for (const [u] of read) {
+    for (const [u] of [...read, ...composio]) {
       log.opened.push(u);
       emit({ type: "fetch", url: u });
     }
     const rest = urls.filter((u) => !read.some(([r]) => r === u));
     if (read.length || rest.length) {
-      const pagesText = read.map(([u, t]) => `=== Page: ${u} ===\n${t}`).join("\n\n");
+      const pagesText = [...read, ...composio].map(([u, t]) => `=== Page: ${u} ===\n${t}`).join("\n\n");
       contents.push({
         role: "user",
         parts: [

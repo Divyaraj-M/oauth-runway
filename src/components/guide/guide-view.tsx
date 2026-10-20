@@ -14,7 +14,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type React from "react";
 import { toast } from "sonner";
 
@@ -29,7 +29,7 @@ import { LEVEL_CLASS, WHO_LABEL, levelOf } from "@/lib/levels";
 import { chatId } from "@/lib/chats";
 import { toMarkdown } from "@/lib/markdown";
 import type { GeneratePayload, Guide, LogoInfo, Who } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, pageUrl } from "@/lib/utils";
 
 import { AppLogo } from "./app-logo";
 import { EvidenceBadge, Freshness, LevelMeter, tag } from "./bits";
@@ -97,6 +97,12 @@ export function GuideView({
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
+  const sendRef = useRef<((text: string) => void) | null>(null);
+  /** Opens the chat and sends right away ("Do it"). */
+  const doNow = (text: string) => {
+    setChatOpen(true);
+    setTimeout(() => sendRef.current?.(text), 0);
+  };
   const openChat = (text = "") => {
     if (text) setChatDraft(text);
     setChatOpen(true);
@@ -134,7 +140,9 @@ export function GuideView({
           </div>
           <div className="flex items-center gap-3">
             <AppLogo name={g.app} logo={logo} />
-            <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {g.app} {g.oauth_supported === false ? "connection" : "OAuth app"}
+            </h1>
           </div>
           <p className="max-w-2xl leading-relaxed text-muted-foreground">{g.verdict}</p>
         </div>
@@ -172,7 +180,11 @@ export function GuideView({
                   Waiting on {g.provider}
                 </span>
                 <span className={cn("font-semibold", unknownWait && "text-muted-foreground")}>{waitLabel(g.waiting.normal)}</span>
-                {g.waiting.ev && !unknownWait && <EvidenceBadge ev={g.waiting.ev} src={g.waiting.src} />}
+                {g.waiting.ev && !unknownWait && (
+                  <div className="mt-1 min-w-0">
+                    <EvidenceBadge ev={g.waiting.ev} src={g.waiting.src} />
+                  </div>
+                )}
               </div>
             </div>
             <p className="tnum text-xs text-muted-foreground">
@@ -186,6 +198,14 @@ export function GuideView({
           </div>
         </Card>
       </header>
+
+      {g.oauth_supported === false && (
+        <Alert {...stagger()} className="enter mt-6 border-l3/40">
+          <TriangleAlertIcon className="text-l3!" />
+          <AlertTitle>{g.app} doesn&apos;t offer OAuth to other developers</AlertTitle>
+          <AlertDescription>Connections use API keys or personal tokens instead, so there&apos;s no OAuth app to create or get approved.</AlertDescription>
+        </Alert>
+      )}
 
       {notice && (
         <div {...stagger()} className="enter mt-6">
@@ -307,7 +327,7 @@ export function GuideView({
                 <li key={x} className="flex items-start gap-2">
                   <CheckIcon className="mt-0.5 size-4 shrink-0 text-l1" />
                   <span className="flex-1">{x}</span>
-                  <Button variant="outline" size="xs" className="shrink-0" onClick={() => openChat(`Do this for me now: ${x}. Give me the finished result I can paste.`)}>
+                  <Button variant="outline" size="xs" className="shrink-0" onClick={() => doNow(`Do this for me now: ${x}. Give me the finished result I can paste.`)}>
                     Do it
                   </Button>
                 </li>
@@ -351,7 +371,7 @@ export function GuideView({
               s.u ? (
                 <a
                   key={s.t}
-                  href={s.u}
+                  href={pageUrl(s.u)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
@@ -415,7 +435,7 @@ export function GuideView({
         Ask agent
       </Button>
 
-      <ChatSheet key={chatId(g, guideId)} chatKey={chatId(g, guideId)} guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} />
+      <ChatSheet key={chatId(g, guideId)} chatKey={chatId(g, guideId)} guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} sendRef={sendRef} />
     </>
   );
 }

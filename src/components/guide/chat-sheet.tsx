@@ -1,7 +1,10 @@
 "use client";
 
-import { CheckIcon, ChevronDownIcon, SendIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { CheckIcon, ChevronDownIcon, CopyIcon, SendIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
+import { useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,7 +17,7 @@ import { askAgent, type ChatMessage } from "@/lib/agent-client";
 import { clearChat, loadChat, type StoredMessage } from "@/lib/chats";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Guide } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, pageUrl } from "@/lib/utils";
 
 type TraceStep = { t: string; done: boolean };
 type Msg = Omit<StoredMessage, "trace"> & { trace?: TraceStep[]; pending?: boolean };
@@ -28,6 +31,7 @@ export function ChatSheet({
   onOpenChange,
   draft,
   setDraft,
+  sendRef,
 }: {
   guide: Guide;
   /** Names the conversation saved for this user. */
@@ -37,6 +41,8 @@ export function ChatSheet({
   /** Message box text; owned by the parent so a step's "Ask" button can prefill it. */
   draft: string;
   setDraft: (text: string) => void;
+  /** Lets the guide page send a message straight away (the "Do it" buttons). */
+  sendRef?: React.RefObject<((text: string) => void) | null>;
 }) {
   const [hist, setHist] = useState<Msg[]>([]);
   const [blocked, setBlocked] = useState(false);
@@ -48,8 +54,9 @@ export function ChatSheet({
   useEffect(() => {
     if (!open || loaded.current) return;
     loaded.current = true;
+    // Earlier turns go first, even if a "Do it" message was already sent while they loaded.
     loadChat(id).then((rows) => {
-      if (rows.length) setHist((h) => (h.length ? h : rows.map(fromStored)));
+      if (rows.length) setHist((h) => [...rows.map(fromStored), ...h]);
     });
   }, [open, id]);
 
@@ -101,9 +108,15 @@ export function ChatSheet({
     }
   }
 
+  // Expose send() to the page; assigned after render so it always sees the latest history.
+  useEffect(() => {
+    if (sendRef) sendRef.current = send;
+  });
+
+  const noWait = /^(no wait|0( days?)?)$/i.test(g.waiting.normal.trim());
   const ideas = [
     g.blockers[0] ? "Which blocker is most likely to hit me?" : "What usually blocks approval?",
-    "What can I do this week to shorten the wait?",
+    noWait ? "What should I test before my first customer connects?" : "What can I do this week to shorten the wait?",
     "Draft the scope list I should request",
   ];
 
@@ -151,8 +164,8 @@ export function ChatSheet({
                         {m.trace?.at(-1)?.t ?? "Thinking…"}
                       </span>
                     ) : (
-                      <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", m.error && "text-destructive")}>
-                        <Linkified text={m.content} />
+                      <div className={cn("text-sm leading-relaxed", m.error && "text-destructive")}>
+                        <ChatMarkdown text={m.content} />
                       </div>
                     )}
                     {!!m.trace?.length && !(m.pending && !m.content) && <Trace steps={m.trace} pending={!!m.pending} />}
@@ -219,25 +232,58 @@ export function ChatSheet({
   );
 }
 
-/** Plain text with http(s) URLs as links (the agent cites pages it opened) and `code` spans for scope names. */
-function Linkified({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s)\]`]+|`[^`\n]+`)/g);
+/** Agent answers are Markdown: lists, bold, inline code, and code blocks with a Copy button (e.g. scope lists). */
+function ChatMarkdown({ text }: { text: string }) {
   return (
-    <>
-      {parts.map((p, i) =>
-        /^`[^`]+`$/.test(p) ? (
-          <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
-            {p.slice(1, -1)}
-          </code>
-        ) : /^https?:\/\//.test(p) ? (
-          <a key={i} href={p.replace(/[.,;:]+$/, "")} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-2 hover:text-foreground">
-            {p}
-          </a>
-        ) : (
-          <Fragment key={i}>{p}</Fragment>
-        ),
-      )}
-    </>
+    <div className="flex flex-col gap-2 [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc [&_strong]:font-semibold [&_strong]:text-foreground">
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => (
+            <a href={href ? pageUrl(href) : undefined} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-2 hover:text-foreground">
+              {children}
+            </a>
+          ),
+          code: ({ className, children }) =>
+            /language-|\n/.test(`${className ?? ""}${String(children)}`) ? (
+              <code className="font-mono text-xs">{children}</code>
+            ) : (
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">{children}</code>
+            ),
+          pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+        }}
+      >
+        {text}
+      </Markdown>
+    </div>
+  );
+}
+
+function CodeBlock({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLPreElement>(null);
+  return (
+    <div className="relative">
+      <pre ref={ref} className="overflow-x-auto rounded-md border bg-muted/50 p-3 pr-16 whitespace-pre">
+        {children}
+      </pre>
+      <Button
+        type="button"
+        variant="outline"
+        size="xs"
+        className="absolute top-2 right-2"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(ref.current?.innerText ?? "");
+            toast("Copied");
+          } catch {
+            toast("Copy was blocked here. Select the text instead.");
+          }
+        }}
+      >
+        <CopyIcon />
+        Copy
+      </Button>
+    </div>
   );
 }
 

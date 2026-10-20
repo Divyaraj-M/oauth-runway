@@ -4,12 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EVIDENCE_LABEL, LEVELS, LEVEL_CLASS, fmtDate } from "@/lib/levels";
 import type { Evidence, Guide } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, pageUrl } from "@/lib/utils";
 
 const EV_CLASS: Record<Evidence, string> = {
   tested: LEVEL_CLASS[1].badge,
   sourced: LEVEL_CLASS[2].badge,
   uncertain: LEVEL_CLASS[3].badge,
+  absent: "border-border bg-muted text-muted-foreground",
 };
 
 /** Square-cornered badge to match the prototype's shadcn new-york look. */
@@ -24,9 +25,11 @@ export function EvidenceBadge({ ev, src }: { ev: Evidence; src?: string }) {
       host = new URL(src).hostname.replace(/^www\./, "");
     } catch {}
     return (
-      <Badge asChild variant="outline" className={cn(tag, EV_CLASS[k], "hover:underline")}>
-        <a href={src} target="_blank" rel="noopener noreferrer" title={`Read on ${src}`}>
-          {EVIDENCE_LABEL[k]} · {host}
+      <Badge asChild variant="outline" className={cn(tag, EV_CLASS[k], "max-w-full hover:underline")}>
+        <a href={pageUrl(src)} target="_blank" rel="noopener noreferrer" title={`Read on ${pageUrl(src)}`}>
+          <span className="truncate">
+            {EVIDENCE_LABEL[k]} · {host}
+          </span>
           <ExternalLinkIcon />
         </a>
       </Badge>

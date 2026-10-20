@@ -19,8 +19,9 @@
   "cases": [
     {
       "case": "Your own workspace",
-      "outcome": "Works immediately, no review",
-      "ev": "sourced"
+      "outcome": "Works as soon as you install it to your own workspace",
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "case": "Other workspaces, unlisted",
@@ -30,7 +31,8 @@
     {
       "case": "Listed in Slack Marketplace",
       "outcome": "Preliminary review (up to 10 business days) + functional review (up to 10 weeks)",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     }
   ],
   "steps": [
@@ -38,19 +40,22 @@
       "who": "you",
       "title": "Create the app at api.slack.com/apps",
       "detail": "From scratch or from a manifest.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "who": "agent",
       "title": "Write the app manifest with minimal scopes",
       "detail": "Scopes are hard to change after listing.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "who": "you",
       "title": "Add the redirect URL and install to your workspace",
       "detail": "Client ID and secret are available right away.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "who": "you",
@@ -62,29 +67,35 @@
       "who": "provider",
       "title": "Marketplace review (optional)",
       "detail": "Slack tests the app themselves; you must give working credentials for your own service.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     }
   ],
   "blockers": [
     {
       "text": "Once listed, scopes and config are locked. Each later change goes through review again, up to 6 weeks.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "text": "In the preliminary review, every resubmission resets your place in the queue. Once a reviewer is assigned in the functional review, resubmitting keeps it.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "text": "Reviewers need a working test account on your product, not just Slack.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "text": "Some scopes are not accepted in the Marketplace at all.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
       "text": "Don't request scopes for features you haven't built yet; Slack rejects them. Legacy and broad scopes (identity.*, admin.*) aren't accepted, and coded workflows can't be listed at all.",
-      "ev": "sourced"
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     }
   ],
   "agent_can": [
@@ -103,6 +114,18 @@
   ],
   "sources": [
     {
+      "t": "Slack: Using token rotation",
+      "u": "https://docs.slack.dev/authentication/using-token-rotation"
+    },
+    {
+      "t": "Composio: Managed vs custom auth",
+      "u": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "t": "Composio: White-label authentication (callback URL)",
+      "u": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
       "t": "Slack Marketplace review guide",
       "u": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
@@ -113,6 +136,54 @@
     {
       "t": "WorkOS: OAuth app approval on Slack, Microsoft, Atlassian",
       "u": "https://workos.com/blog/oauth-app-approval-slack-microsoft-atlassian"
+    }
+  ],
+  "facts": [
+    {
+      "q": "Do you need a paid plan to create the OAuth app, or for any feature the agent needs (e.g. webhooks)?",
+      "a": "Not documented in the pages read. Creating a Slack app needs a Slack account and a workspace to install it in.",
+      "ev": "absent"
+    },
+    {
+      "q": "Is there a sandbox or test environment, or do you test against a real account?",
+      "a": "Test in your own workspace. Marketplace reviewers can't use your workspaces, so they need a way to install the app themselves plus test credentials for your product.",
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
+    },
+    {
+      "q": "Is there any review, approval or user cap before other people's accounts can connect?",
+      "a": "A Marketplace listing needs a preliminary review (up to 10 business days) and a functional review (up to 10 weeks).",
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
+    },
+    {
+      "q": "Which scopes cover what the agent must do, and does any of them trigger a review?",
+      "a": "Depends on what the agent does; request only scopes for features that exist. Marketplace rejects legacy and broad scopes such as identity.*, admin.*, workflow.steps:execute and triggers:*.",
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
+    },
+    {
+      "q": "What redirect URL goes in when using Composio, and is localhost allowed while building?",
+      "a": "Use Composio's callback, https://backend.composio.dev/api/v3/toolkits/auth/callback. Composio's dashboard shows the exact redirect URI for your auth config.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/white-labeling-authentication"
+    },
+    {
+      "q": "How long do access tokens last, and how are they refreshed?",
+      "a": "Without token rotation, access tokens never expire. With rotation they expire every 12 hours and are refreshed with oauth.v2.access (grant_type=refresh_token); rotation can't be turned off once enabled.",
+      "ev": "sourced",
+      "src": "https://docs.slack.dev/authentication/using-token-rotation"
+    },
+    {
+      "q": "Whose name do users see on the consent screen?",
+      "a": "With Composio's managed app: \"Composio wants to access your account\". With your own OAuth app: your app's name.",
+      "ev": "sourced",
+      "src": "https://docs.composio.dev/docs/authentication/custom-app-vs-managed-app"
+    },
+    {
+      "q": "If you switch from Composio's managed app to your own, do users have to reconnect?",
+      "a": "Not documented by Composio. Each toolkit has its own auth config; plan for users to reconnect, since tokens belong to the OAuth app that issued them.",
+      "ev": "absent"
     }
   ]
 }

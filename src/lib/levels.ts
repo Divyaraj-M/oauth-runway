@@ -1,8 +1,8 @@
 import type { Difficulty, Evidence, Who } from "./types";
 
 export const LEVELS = [
-  { n: 1, key: "self", name: "Self-serve", desc: "Credentials in minutes. No provider review for the common case." },
-  { n: 2, key: "review", name: "Review to list", desc: "Works right away. Review only if you want a public listing." },
+  { n: 1, key: "self", name: "Self-serve", desc: "Credentials in minutes. Other people's accounts can connect without a review." },
+  { n: 2, key: "review", name: "Review to go public", desc: "Works for your own account right away. A provider review before others can connect, or before a public listing." },
   { n: 3, key: "audit", name: "Security audit", desc: "Verification, plus a paid third-party assessment for some permissions." },
   { n: 4, key: "partner", name: "Partner-gated", desc: "A person at the provider must approve you and create the app." },
 ] as const;
@@ -11,7 +11,7 @@ export type Level = (typeof LEVELS)[number];
 
 export const levelOf = (k: Difficulty | string): Level => LEVELS.find((l) => l.key === k) ?? LEVELS[1];
 
-export const EVIDENCE_LABEL: Record<Evidence, string> = { tested: "Tested", sourced: "Sourced", uncertain: "Unverified" };
+export const EVIDENCE_LABEL: Record<Evidence, string> = { tested: "Tested", sourced: "Sourced", uncertain: "Unverified", absent: "Not documented" };
 
 export const WHO_LABEL: Record<Who, string> = { agent: "Agent", you: "You", provider: "Provider" };
 
