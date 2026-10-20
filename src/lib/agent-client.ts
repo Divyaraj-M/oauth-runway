@@ -21,11 +21,12 @@ export type AgentEvent =
   | { type: "done"; payload?: GeneratePayload; research?: { searches: string[]; opened: string[] } }
   | { type: "error"; message: string };
 
-async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent) => void): Promise<AgentEvent & { type: "done" }> {
+async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent) => void, signal?: AbortSignal): Promise<AgentEvent & { type: "done" }> {
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...aiHeaders() }, body: JSON.stringify(body) });
-  } catch {
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...aiHeaders() }, body: JSON.stringify(body), signal });
+  } catch (err) {
+    if (signal?.aborted) throw err;
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }
   if (!res.ok || !res.body) {
@@ -61,8 +62,8 @@ export async function askAgent(guide: Guide, messages: ChatMessage[], onEvent: (
   await streamEvents("/api/agent", { guide, messages }, onEvent);
 }
 
-export async function generateGuide(query: string, onEvent: (e: AgentEvent) => void): Promise<GeneratePayload> {
-  const done = await streamEvents("/api/generate", { query }, onEvent);
+export async function generateGuide(query: string, onEvent: (e: AgentEvent) => void, signal?: AbortSignal): Promise<GeneratePayload> {
+  const done = await streamEvents("/api/generate", { query }, onEvent, signal);
   if (!done.payload) throw new Error("The agent's answer came back malformed. Try again.");
   return done.payload;
 }

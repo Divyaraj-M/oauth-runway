@@ -136,7 +136,7 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
           parts: [{ text: "Before answering: list up to 8 public URLs (official developer docs first) you would need to read to answer accurately. Reply with ONLY a JSON array of URL strings." }],
         },
       ],
-      config: { systemInstruction: system },
+      config: { systemInstruction: system, abortSignal: AbortSignal.timeout(45_000) },
     });
     const urls = parseUrls(plan.text ?? "").slice(0, 8);
     for (const u of urls) emit({ type: "note", text: `Will read ${u.replace(/^https?:\/\//, "")}` });
@@ -144,35 +144,55 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
     if (urls.length) contents.push({ role: "user", parts: [{ text: `Pages you may read with URL context:\n${urls.join("\n")}` }] });
   }
 
-  const stream = await ai.models.generateContentStream({
-    model: creds.model,
-    contents,
-    config: { systemInstruction: system, tools: [{ urlContext: {} }, ...(creds.search ? [{ googleSearch: {} }] : [])] },
-  });
-
+  // Watchdog: Gemini sometimes sends the whole answer and then never closes the stream. Abort after a quiet
+  // spell (short once text has arrived, longer while it is still opening pages) and use what arrived.
+  const ctrl = new AbortController();
+  const hardCap = setTimeout(() => ctrl.abort(), 150_000);
+  let idle: ReturnType<typeof setTimeout> | undefined;
   let text = "";
+  const arm = () => {
+    clearTimeout(idle);
+    idle = setTimeout(() => ctrl.abort(), text ? 15_000 : 90_000);
+  };
+
   const opened = new Set<string>();
   const searches = new Set<string>();
-  for await (const chunk of stream) {
-    const delta = chunk.text ?? "";
-    if (delta) {
-      text += delta;
-      emit({ type: "text", delta });
-    }
-    const cand = chunk.candidates?.[0];
-    for (const m of cand?.urlContextMetadata?.urlMetadata ?? []) {
-      if (m.retrievedUrl && m.urlRetrievalStatus === "URL_RETRIEVAL_STATUS_SUCCESS" && !opened.has(m.retrievedUrl)) {
-        opened.add(m.retrievedUrl);
-        emit({ type: "fetch", url: m.retrievedUrl });
+  try {
+    arm();
+    const stream = await ai.models.generateContentStream({
+      model: creds.model,
+      contents,
+      config: { systemInstruction: system, tools: [{ urlContext: {} }, ...(creds.search ? [{ googleSearch: {} }] : [])], abortSignal: ctrl.signal },
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.text ?? "";
+      if (delta) {
+        text += delta;
+        emit({ type: "text", delta });
       }
-    }
-    for (const q of cand?.groundingMetadata?.webSearchQueries ?? []) {
-      if (!searches.has(q)) {
-        searches.add(q);
-        emit({ type: "search", query: q });
+      arm();
+      const cand = chunk.candidates?.[0];
+      for (const m of cand?.urlContextMetadata?.urlMetadata ?? []) {
+        if (m.retrievedUrl && m.urlRetrievalStatus === "URL_RETRIEVAL_STATUS_SUCCESS" && !opened.has(m.retrievedUrl)) {
+          opened.add(m.retrievedUrl);
+          emit({ type: "fetch", url: m.retrievedUrl });
+        }
       }
+      for (const q of cand?.groundingMetadata?.webSearchQueries ?? []) {
+        if (!searches.has(q)) {
+          searches.add(q);
+          emit({ type: "search", query: q });
+        }
+      }
+      for (const c of cand?.groundingMetadata?.groundingChunks ?? []) if (c.web?.uri) log.seen.push({ title: c.web.title ?? c.web.uri, url: c.web.uri });
     }
-    for (const c of cand?.groundingMetadata?.groundingChunks ?? []) if (c.web?.uri) log.seen.push({ title: c.web.title ?? c.web.uri, url: c.web.uri });
+  } catch (err) {
+    if (!ctrl.signal.aborted) throw err;
+    if (!text) throw new ResearchError("Gemini stopped responding. Try again in a minute.");
+    // Stalled after sending its answer: keep what arrived.
+  } finally {
+    clearTimeout(idle);
+    clearTimeout(hardCap);
   }
   log.opened = [...opened];
   log.searches = [...searches];

@@ -53,6 +53,8 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
   const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
   const [gen, setGen] = useState<GenState>({ kind: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
+  const drafts = useDrafts();
 
   // Next.js keeps this page mounted but hidden (React Activity) after you navigate away, so a generation
   // can finish while you're elsewhere. Track visibility: the cleanup runs when hidden, the setup when shown again.
@@ -81,6 +83,8 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
     if (hit) return router.push(`/guides/${hit}`);
 
     setGen({ kind: "running", steps: [], chars: 0 });
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     const onEvent = (e: AgentEvent) =>
       setGen((s) => {
         if (s.kind !== "running") return s;
@@ -91,7 +95,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         return s;
       });
     try {
-      const payload = await generateGuide(text, onEvent);
+      const payload = await generateGuide(text, onEvent, ctrl.signal);
       const slug = saveDraft(payload);
       const href = `/draft?app=${encodeURIComponent(slug)}`;
       // Reset so coming back to this page doesn't show a finished run as still "Writing the guide".
@@ -100,7 +104,10 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
       if (visible.current) router.push(href);
       else toast(`${payload.guide.app} guide is ready`, { description: "Saved to your drafts.", action: { label: "Open", onClick: () => router.push(href) } });
     } catch (err) {
+      if (ctrl.signal.aborted) return setGen({ kind: "idle" });
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
+    } finally {
+      if (abortRef.current === ctrl) abortRef.current = null;
     }
   }
 
@@ -170,11 +177,9 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
           </div>
         </div>
 
-        {gen.kind !== "idle" && (
-          <div className="w-full max-w-2xl text-left">
-            <GenStatus state={gen} />
-          </div>
-        )}
+        <div className="w-full max-w-2xl text-left">
+          {gen.kind === "idle" ? <RecentGuides drafts={drafts} /> : <GenStatus state={gen} onCancel={() => abortRef.current?.abort()} />}
+        </div>
       </section>
 
       <Library
@@ -188,7 +193,52 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
   );
 }
 
-function GenStatus({ state }: { state: GenState }) {
+/** Relative time like "3 min ago" for recent drafts. */
+function ago(iso: string) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return fmtDate(iso.slice(0, 10));
+}
+
+/** The last guides this browser generated, newest first; shown under the search when nothing is running. */
+function RecentGuides({ drafts }: { drafts: Record<string, SavedDraft> }) {
+  const recent = Object.entries(drafts)
+    .sort(([, a], [, b]) => b.savedAt.localeCompare(a.savedAt))
+    .slice(0, 4);
+  if (!recent.length) return null;
+  return (
+    <div className="enter flex flex-col gap-2">
+      <span className="text-xs font-medium text-muted-foreground">Your recent guides</span>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {recent.map(([slug, d]) => {
+          const l = levelOf(d.guide.difficulty);
+          return (
+            <Item key={slug} asChild variant="outline" size="sm" className="bg-card">
+              <Link href={`/draft?app=${encodeURIComponent(slug)}`}>
+                <ItemMedia>
+                  <AppLogo name={d.guide.app} logo={d.logo} />
+                </ItemMedia>
+                <ItemContent className="min-w-0 gap-0.5">
+                  <ItemTitle className="w-full">
+                    <span className="truncate">{d.guide.app}</span>
+                    <span className={cn("ml-auto shrink-0 text-xs font-medium", LEVEL_CLASS[l.n].text)}>L{l.n}</span>
+                  </ItemTitle>
+                  <ItemDescription className="truncate text-xs">
+                    Work {d.guide.hands_on.text} · Wait {d.guide.waiting.normal} · {ago(d.savedAt)}
+                  </ItemDescription>
+                </ItemContent>
+              </Link>
+            </Item>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GenStatus({ state, onCancel }: { state: GenState; onCancel: () => void }) {
   if (state.kind === "idle") return null;
   if (state.kind === "error")
     return (
@@ -206,9 +256,14 @@ function GenStatus({ state }: { state: GenState }) {
     <Card className="enter gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="font-semibold tracking-tight">{writing ? "Writing the guide" : "Researching the provider's docs"}</span>
-        <span className="tnum font-mono text-xs text-muted-foreground">
-          {searches} searches · {opened} pages opened{writing ? ` · ${chars} chars` : ""}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="tnum font-mono text-xs text-muted-foreground">
+            {searches} searches · {opened} pages opened{writing ? ` · ${chars} chars` : ""}
+          </span>
+          <Button variant="ghost" size="xs" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
       </div>
       <Progress value={writing ? 90 : Math.min(80, 10 + steps.length * 8)} className="h-1" />
       <ol className="flex flex-col gap-2 text-sm">
