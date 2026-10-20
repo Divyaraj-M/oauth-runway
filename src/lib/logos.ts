@@ -17,7 +17,7 @@ async function svglIndex(): Promise<Map<string, SvglEntry>> {
   "use cache";
   cacheLife("days");
   try {
-    const res = await fetch("https://api.svgl.app");
+    const res = await fetch("https://api.svgl.app", { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return new Map();
     const all = (await res.json()) as SvglEntry[];
     return new Map(all.map((x) => [norm(x.title), x]));
@@ -32,7 +32,7 @@ async function brandbird(name: string): Promise<string | null> {
   cacheLife("days");
   const url = `https://storage.googleapis.com/brandbird/assets/company-logos/Logomark/${encodeURIComponent(`${name} Logomark.svg`)}`;
   try {
-    const res = await fetch(url, { method: "HEAD" });
+    const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
     return res.ok && res.headers.get("content-type")?.includes("svg") ? url : null;
   } catch {
     return null;
@@ -46,8 +46,9 @@ async function logoDev(domain: string, token: string): Promise<string | null> {
   const url = `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(token)}&size=64&format=png&retina=true&fallback=404`;
   try {
     // GET, not HEAD: img.logo.dev answers HEAD with 404 even when the logo exists.
-    const res = await fetch(url);
-    await res.body?.cancel();
+    // Read the (small) body rather than cancelling it: res.body.cancel() never resolves inside "use cache".
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    await res.arrayBuffer();
     return res.ok && res.headers.get("content-type")?.startsWith("image/") ? url : null;
   } catch {
     return null;
@@ -88,6 +89,12 @@ export async function resolveLogo(q: LogoQuery): Promise<LogoInfo> {
 
   tried.push("letter");
   return { source: "letter", tried };
+}
+
+/** resolveLogo with a ceiling, for request-time callers: a slow logo source must never hold up a guide. */
+export function resolveLogoWithin(q: LogoQuery, ms = 8000): Promise<LogoInfo> {
+  const fallback: LogoInfo = { source: "letter", tried: ["bundled", "svgl", "brandbird", "letter"] };
+  return Promise.race([resolveLogo(q).catch(() => fallback), new Promise<LogoInfo>((r) => setTimeout(() => r(fallback), ms))]);
 }
 
 export async function resolveLogos(catalog: CatalogEntry[]): Promise<Record<string, LogoInfo>> {

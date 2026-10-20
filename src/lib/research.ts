@@ -164,7 +164,14 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
       contents,
       config: { systemInstruction: system, tools: [{ urlContext: {} }, ...(creds.search ? [{ googleSearch: {} }] : [])], abortSignal: ctrl.signal },
     });
-    for await (const chunk of stream) {
+    // Race every read against the watchdog ourselves: the SDK doesn't abort a read that is already waiting.
+    const it = stream[Symbol.asyncIterator]();
+    const stalled = new Promise<never>((_, reject) => ctrl.signal.addEventListener("abort", () => reject(new Error("stalled")), { once: true }));
+    stalled.catch(() => {});
+    for (;;) {
+      const next = await Promise.race([it.next(), stalled]);
+      if (next.done) break;
+      const chunk = next.value;
       const delta = chunk.text ?? "";
       if (delta) {
         text += delta;
@@ -190,6 +197,7 @@ async function geminiResearch({ system, messages, emit }: ResearchArgs, creds: E
     if (!ctrl.signal.aborted) throw err;
     if (!text) throw new ResearchError("Gemini stopped responding. Try again in a minute.");
     // Stalled after sending its answer: keep what arrived.
+    emit({ type: "note", text: "Gemini went quiet; using the answer it sent" });
   } finally {
     clearTimeout(idle);
     clearTimeout(hardCap);

@@ -16,7 +16,7 @@ Evidence rules, strictly:
 - Never ask for or include credentials, client secrets or tokens.
 
 When you have finished researching, reply with ONLY one JSON object, no prose before or after:
-{"app":string,"provider":string,"domain":string (provider's main website domain, e.g. "zoom.us"),"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences, starting with your reading of their case),
+{"app":string (the product's plain name, e.g. "Clay", not a URL or "X API"),"provider":string,"domain":string (provider's main website domain, e.g. "zoom.us"),"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences, starting with your reading of their case),
 "hands_on":{"text":string (a short duration range only, e.g. "1–3 hours"),"days":number},"waiting":{"best":string,"normal":string,"worst":string (each a short duration range only, e.g. "2–6 weeks" or "None"),"days":number},
 "start_now":string,
 "cases":[{"case":string,"outcome":string,"ev":"sourced"|"uncertain","src"?:string}] (2-3),

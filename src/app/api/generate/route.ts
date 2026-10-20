@@ -1,5 +1,5 @@
 import { CATALOG } from "@/lib/guides";
-import { resolveLogo } from "@/lib/logos";
+import { resolveLogoWithin } from "@/lib/logos";
 import { GENERATE_SYSTEM, generateUser } from "@/lib/prompts";
 import { credentialsFrom, modelOf, ndjson, noKey, research } from "@/lib/research";
 import { looksLikeSecret } from "@/lib/secrets";
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     for (const u of log.opened) if (!g.sources.some((s) => urlKey(s.u) === urlKey(u))) g.sources.push({ t: u, u });
 
     const known = CATALOG.find((c) => normName(c.app) === normName(g.app));
-    const logo = await resolveLogo({ key: known?.key, app: g.app, provider: g.provider, domain: known?.domain ?? g.domain });
+    const logo = await resolveLogoWithin({ key: known?.key, app: g.app, provider: g.provider, domain: known?.domain ?? g.domain });
 
     const payload: GeneratePayload = {
       guide: g,
