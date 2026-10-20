@@ -67,20 +67,5 @@ export async function generateGuide(query: string, onEvent: (e: AgentEvent) => v
   return done.payload;
 }
 
-const DRAFT_KEY = "oauth-runway:draft";
+/** A generated guide as returned by /api/generate; stored by src/lib/drafts.ts. */
 export type Draft = { guide: Guide; logo?: LogoInfo; research?: GeneratePayload["research"] };
-
-export function saveDraft(d: Draft) {
-  try {
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-  } catch {}
-}
-
-export function loadDraft(): Draft | null {
-  try {
-    const s = sessionStorage.getItem(DRAFT_KEY);
-    return s ? (JSON.parse(s) as Draft) : null;
-  } catch {
-    return null;
-  }
-}

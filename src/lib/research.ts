@@ -232,17 +232,25 @@ const redact = (s: string, secret: string) => (secret ? s.split(secret).join("[r
 /** NDJSON streaming response; `run` writes events. Errors become an `error` event; the key is scrubbed from server logs. */
 export function ndjson(creds: Credentials, run: (send: (obj: unknown) => void) => Promise<void>): Response {
   const enc = new TextEncoder();
+  // Set when the browser goes away mid-stream (navigated off, closed the tab); writes after that are dropped.
+  let closed = false;
   const body = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
+      const send = (obj: unknown) => {
+        if (!closed) controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
+      };
       try {
         await run(send);
       } catch (err) {
         console.error(redact(err instanceof Error ? `${err.name}: ${err.message}` : String(err), creds.apiKey));
         send({ type: "error", message: describeError(err).message });
       } finally {
-        controller.close();
+        if (!closed) controller.close();
+        closed = true;
       }
+    },
+    cancel() {
+      closed = true;
     },
   });
   return new Response(body, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" } });

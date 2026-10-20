@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppLogo } from "@/components/guide/app-logo";
 import { LevelMeter } from "@/components/guide/bits";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -17,7 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { type AgentEvent, generateGuide, saveDraft } from "@/lib/agent-client";
+import { type AgentEvent, generateGuide } from "@/lib/agent-client";
+import { type SavedDraft, draftSlug, saveDraft, useDrafts } from "@/lib/drafts";
 import { LEVELS, LEVEL_CLASS, fmtDate, levelOf } from "@/lib/levels";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { CatalogEntry, Guide, LogoInfo } from "@/lib/types";
@@ -79,8 +81,8 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
       });
     try {
       const payload = await generateGuide(text, onEvent);
-      saveDraft(payload);
-      router.push("/draft");
+      const slug = saveDraft(payload);
+      router.push(`/draft?app=${encodeURIComponent(slug)}`);
     } catch (err) {
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
     }
@@ -250,17 +252,32 @@ function Library({
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const drafts = useDrafts();
+
+  // Catalog apps, plus generated drafts for apps the catalog doesn't list (e.g. Pipedrive), at the end.
+  const known = new Set(catalog.map((c) => draftSlug(c.app)));
+  const entries: CatalogEntry[] = [
+    ...catalog,
+    ...Object.entries(drafts)
+      .filter(([slug]) => !known.has(slug))
+      .map(([slug, d]) => ({ key: `draft:${slug}`, app: d.guide.app, provider: d.guide.provider, cat: "Draft", domain: d.guide.domain })),
+  ];
+  // A reviewed guide always wins over a draft for the same app.
+  const draftOf = (c: CatalogEntry) => (guides[c.key] ? undefined : drafts[draftSlug(c.app)]);
+  const levelFor = (c: CatalogEntry) => {
+    const g = guides[c.key] ?? draftOf(c)?.guide;
+    return g ? levelOf(g.difficulty).n : 0;
+  };
+  const draftCount = entries.filter((c) => draftOf(c)).length;
 
   const ql = query.toLowerCase();
-  const matches = catalog.filter((c) => {
-    const g = guides[c.key];
+  const matches = entries.filter((c) => {
     if (ql && !`${c.app} ${c.provider} ${c.cat}`.toLowerCase().includes(ql)) return false;
     if (!filter) return true;
-    if (filter === 5) return !g;
-    return !!g && levelOf(g.difficulty).n === filter;
+    return filter === 5 ? levelFor(c) === 0 : levelFor(c) === filter;
   });
   const collapsed = !showAll && !ql && !filter;
-  const rows = collapsed ? matches.filter((c) => guides[c.key]) : matches;
+  const rows = collapsed ? matches.filter((c) => guides[c.key] || draftOf(c)) : matches;
   const hidden = matches.length - rows.length;
   const showToggle = collapsed ? hidden > 0 : showAll && !ql && !filter;
 
@@ -269,10 +286,10 @@ function Library({
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold tracking-tight">Apps</h2>
-          <p className="text-sm text-muted-foreground">Reviewed guides show their level. For the rest, the agent researches a live draft.</p>
+          <p className="text-sm text-muted-foreground">Reviewed guides show their level. Drafts you generate are saved here, in this browser.</p>
         </div>
         <p className="tnum hidden shrink-0 font-mono text-xs text-muted-foreground sm:block">
-          {rows.length}/{catalog.length} · {Object.keys(guides).length} reviewed
+          {rows.length}/{entries.length} · {Object.keys(guides).length} reviewed{draftCount ? ` · ${draftCount} draft${draftCount > 1 ? "s" : ""}` : ""}
         </p>
       </div>
 
@@ -309,8 +326,11 @@ function Library({
           <div className="divide-y">
             {rows.map((c, idx) => {
               const g = guides[c.key];
+              const d = draftOf(c);
               return g ? (
                 <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
+              ) : d ? (
+                <DraftRow key={c.key} c={c} d={d} logo={logos[c.key] ?? d.logo} />
               ) : (
                 <UnratedRow key={c.key} c={c} i={showAll ? idx : -1} logo={logos[c.key]} onGenerate={onGenerate} />
               );
@@ -322,7 +342,7 @@ function Library({
       <div className="flex flex-wrap items-center gap-2">
         {showToggle && (
           <Button variant="outline" size="lg" className="px-4" onClick={() => setShowAll((s) => !s)}>
-            {collapsed ? `Show all ${catalog.length} apps` : "Show reviewed only"}
+            {collapsed ? `Show all ${entries.length} apps` : "Show guides only"}
             <ChevronDownIcon className={cn("transition-transform duration-200 ease-(--ease-out)", !collapsed && "rotate-180")} />
           </Button>
         )}
@@ -368,6 +388,51 @@ function ReviewedRow({ c, g, logo }: { c: CatalogEntry; g: Guide; logo?: LogoInf
                 Work {g.hands_on.text} · Wait {g.waiting.normal}
               </span>
               <span>Updated {fmtDate(g.checked ?? "2026-10-20")}</span>
+            </div>
+          </div>
+        </ItemContent>
+        <ItemActions className="hidden sm:flex">
+          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-150 ease-(--ease-out) group-hover/item:translate-x-0.5" />
+        </ItemActions>
+      </Link>
+    </Item>
+  );
+}
+
+/** A guide this browser generated: real level, but marked Draft and never presented as reviewed. */
+function DraftRow({ c, d, logo }: { c: CatalogEntry; d: SavedDraft; logo?: LogoInfo }) {
+  const l = levelOf(d.guide.difficulty);
+  return (
+    <Item asChild className="rounded-none px-4 py-4" role="listitem">
+      <Link href={`/draft?app=${encodeURIComponent(draftSlug(c.app))}`}>
+        <ItemMedia>
+          <AppLogo name={c.app} logo={logo} />
+        </ItemMedia>
+        <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
+            <ItemTitle>
+              {c.app}
+              <Badge variant="secondary" className="rounded-md px-1.5 text-[11px]">
+                Draft
+              </Badge>
+            </ItemTitle>
+            <div className="flex items-center gap-2">
+              <div className="w-14 shrink-0">
+                <LevelMeter n={l.n} />
+              </div>
+              <span className={cn("text-xs font-medium", LEVEL_CLASS[l.n].text)}>
+                L{l.n} · {l.name}
+              </span>
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <ItemDescription className="line-clamp-1">{d.guide.verdict.split(". ")[0]}.</ItemDescription>
+            <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <ClockIcon className="size-3.5" />
+                Work {d.guide.hands_on.text} · Wait {d.guide.waiting.normal}
+              </span>
+              <span>Generated {fmtDate(d.savedAt.slice(0, 10))} · not reviewed</span>
             </div>
           </div>
         </ItemContent>

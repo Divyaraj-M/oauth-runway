@@ -10,6 +10,7 @@ import {
   LinkIcon,
   MessageCircleIcon,
   ShieldIcon,
+  Trash2Icon,
   TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -55,7 +56,18 @@ async function copy(text: string, msg: string) {
   }
 }
 
-export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: LogoInfo; research?: GeneratePayload["research"] }) {
+export function GuideView({
+  guide: g,
+  logo,
+  research,
+  onRemove,
+}: {
+  guide: Guide;
+  logo?: LogoInfo;
+  research?: GeneratePayload["research"];
+  /** Saved drafts only: removes it from the library list. */
+  onRemove?: () => void;
+}) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
   const total = (g.hands_on.days || 0) + (g.waiting.days || 0);
@@ -347,6 +359,12 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           <Button size="lg" variant="outline" className="px-4" onClick={() => copy(location.href, "Link copied")}>
             <LinkIcon />
             Copy link
+          </Button>
+        )}
+        {onRemove && (
+          <Button size="lg" variant="ghost" className="px-4 text-muted-foreground" onClick={onRemove}>
+            <Trash2Icon />
+            Remove from list
           </Button>
         )}
       </div>
