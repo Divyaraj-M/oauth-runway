@@ -3,7 +3,7 @@ import { insertGuide, logEvent, newGuideId } from "@/lib/db";
 import { CATALOG } from "@/lib/guides";
 import { resolveLogoWithin } from "@/lib/logos";
 import { GENERATE_SYSTEM, generateUser } from "@/lib/prompts";
-import { credentialsFrom, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
+import { credentialsFor, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Evidence, GeneratePayload, Guide } from "@/lib/types";
 import { normName } from "@/lib/utils";
@@ -24,7 +24,7 @@ const urlKey = (u: string) =>
 export async function POST(req: Request) {
   const user = await currentUser();
   if (!user) return signInRequired();
-  const creds = credentialsFrom(req);
+  const creds = await credentialsFor(user.id);
   if (!creds) return noKey();
   const body = (await req.json().catch(() => null)) as { query?: unknown } | null;
   const query = typeof body?.query === "string" ? body.query.trim().slice(0, 1000) : "";

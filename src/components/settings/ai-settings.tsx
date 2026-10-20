@@ -12,7 +12,8 @@ import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { type AiSettings, GEMINI_MODELS, type Provider, aiHeaders, clearSettings, loadSettings, saveSettings, useHasKey } from "@/lib/ai-settings";
+import { useMe } from "@/components/auth/me";
+import { GEMINI_MODELS, type Provider, type SettingsInput, removeKey, saveSettings, testKey } from "@/lib/ai-settings";
 import { cn } from "@/lib/utils";
 
 const PROVIDERS: Record<Provider, { label: string; keyHint: string; getKey: string; model: string }> = {
@@ -31,11 +32,17 @@ const PROVIDERS: Record<Provider, { label: string; keyHint: string; getKey: stri
 };
 
 type Check = { kind: "idle" } | { kind: "checking" } | { kind: "ok" } | { kind: "error"; message: string };
+type Form = { provider: Provider; apiKey: string; model: string; search: boolean };
 
 /** Header button + dialog where each user enters their own AI key. Other components open it via the "open-ai-settings" event. */
 export function AiSettingsButton() {
-  const hasKey = useHasKey();
+  const { user, ai, requireSignIn } = useMe();
+  const hasKey = !!ai;
   const [open, setOpen] = useState(false);
+  // Keys are saved on the account, so sign in first.
+  const openSettings = async () => {
+    if (user || (await requireSignIn())) setOpen(true);
+  };
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
@@ -45,7 +52,7 @@ export function AiSettingsButton() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setOpen(true)} aria-label="AI settings">
+      <Button variant="outline" size="sm" className="gap-1.5" onClick={openSettings} aria-label="AI settings">
         <span className={cn("size-1.5 rounded-full", hasKey ? "bg-l1" : "bg-l3")} aria-hidden />
         <SettingsIcon />
         <span className="hidden sm:inline">{hasKey ? "AI key set" : "Add AI key"}</span>
@@ -57,25 +64,25 @@ export function AiSettingsButton() {
 }
 
 function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const [s, setS] = useState<AiSettings>(loadSettings);
+  const { ai, refresh } = useMe();
+  // The saved key never comes back to the browser; leaving the field empty keeps it.
+  const [s, setS] = useState<Form>({ provider: ai?.provider ?? "gemini", apiKey: "", model: ai?.model ?? GEMINI_MODELS[0].id, search: ai?.search ?? false });
   const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [check, setCheck] = useState<Check>({ kind: "idle" });
   const p = PROVIDERS[s.provider];
-  const set = (patch: Partial<AiSettings>) => {
+  const keepsSaved = !!ai && ai.provider === s.provider && !s.apiKey.trim();
+  const input = (): SettingsInput => ({ ...s, apiKey: s.apiKey.trim() || undefined });
+  const set = (patch: Partial<Form>) => {
     setS((x) => ({ ...x, ...patch }));
     setCheck({ kind: "idle" });
   };
 
   async function test() {
-    if (!s.apiKey.trim()) return setCheck({ kind: "error", message: "Paste a key first." });
+    if (!s.apiKey.trim() && !keepsSaved) return setCheck({ kind: "error", message: "Paste a key first." });
     setCheck({ kind: "checking" });
-    try {
-      const res = await fetch("/api/key-check", { method: "POST", headers: aiHeaders({ ...s, apiKey: s.apiKey.trim() }) });
-      const data = await res.json().catch(() => ({}));
-      setCheck(res.ok && data.ok ? { kind: "ok" } : { kind: "error", message: data.message || "The key didn't work." });
-    } catch {
-      setCheck({ kind: "error", message: "Couldn't reach the server." });
-    }
+    const r = await testKey(input());
+    setCheck(r.ok ? { kind: "ok" } : { kind: "error", message: r.message ?? "The key didn't work." });
   }
 
   return (
@@ -87,11 +94,20 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </DialogHeader>
         <form
           className="grid gap-4"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            saveSettings({ ...s, apiKey: s.apiKey.trim() });
-            toast(s.apiKey.trim() ? "AI key saved in this browser" : "Settings saved");
-            onClose();
+            if (!s.apiKey.trim() && !keepsSaved) return setCheck({ kind: "error", message: "Paste a key first." });
+            setSaving(true);
+            try {
+              await saveSettings(input());
+              await refresh();
+              toast(s.apiKey.trim() ? "AI key saved to your account (encrypted)" : "Settings saved");
+              onClose();
+            } catch (err) {
+              setCheck({ kind: "error", message: err instanceof Error ? err.message : "Couldn't save." });
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           <FieldGroup>
@@ -129,7 +145,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                   spellCheck={false}
                   value={s.apiKey}
                   onChange={(e) => set({ apiKey: e.target.value })}
-                  placeholder={p.keyHint}
+                  placeholder={keepsSaved ? `Saved key ending in ••••${ai.last4}` : p.keyHint}
                   className="font-mono"
                   aria-invalid={check.kind === "error" || undefined}
                 />
@@ -139,13 +155,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                   </InputGroupButton>
                 </InputGroupAddon>
               </InputGroup>
+              {keepsSaved && <FieldDescription>Leave empty to keep the saved key, or paste a new one to replace it.</FieldDescription>}
             </Field>
 
             {s.provider === "gemini" && (
               <>
                 <Field>
                   <FieldLabel htmlFor="ai-model">Model</FieldLabel>
-                  <Select value={s.geminiModel} onValueChange={(v) => set({ geminiModel: v })}>
+                  <Select value={s.model} onValueChange={(v) => set({ model: v })}>
                     <SelectTrigger id="ai-model" className="h-9 w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -159,7 +176,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                   </Select>
                 </Field>
                 <Field orientation="horizontal">
-                  <Checkbox id="ai-search" checked={s.geminiSearch} onCheckedChange={(v) => set({ geminiSearch: v === true })} />
+                  <Checkbox id="ai-search" checked={s.search} onCheckedChange={(v) => set({ search: v === true })} />
                   <FieldContent>
                     <FieldLabel htmlFor="ai-search">Use Google Search</FieldLabel>
                     <FieldDescription>Paid Gemini tier only. Off: the agent picks official pages and reads them.</FieldDescription>
@@ -188,7 +205,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <ShieldIcon className="mt-0.5 size-3 shrink-0" />
-            Stored only in this browser. Sent with each agent request to call the provider, never saved or logged on the server. Use a key you can revoke.
+            Saved to your account, encrypted (AES-256). It never comes back to the browser and isn&apos;t logged; signing out leaves nothing here. Use a key you can revoke.
           </p>
 
           <DialogFooter className="sm:justify-between">
@@ -197,9 +214,11 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
               variant="ghost"
               size="lg"
               className="px-3 text-muted-foreground"
-              onClick={() => {
-                clearSettings();
-                toast("AI key removed from this browser");
+              disabled={!ai}
+              onClick={async () => {
+                await removeKey().catch(() => null);
+                await refresh();
+                toast("AI key removed from your account");
                 onClose();
               }}
             >
@@ -210,7 +229,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 {check.kind === "checking" && <Spinner />}
                 Test key
               </Button>
-              <Button type="submit" size="lg" className="px-4">
+              <Button type="submit" size="lg" className="px-4" disabled={saving}>
+                {saving && <Spinner />}
                 Save
               </Button>
             </div>

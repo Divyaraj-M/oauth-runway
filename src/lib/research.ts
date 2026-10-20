@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ApiError as GeminiApiError, GoogleGenAI } from "@google/genai";
 
+import { getSealedKey } from "./db";
+import { open } from "./secret-box";
+
 /** Events streamed to the browser as NDJSON, one JSON object per line. */
 export type ResearchEvent =
   | { type: "search"; query: string }
@@ -22,7 +25,7 @@ export type ResearchLog = {
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
-/** The caller's own key, read from request headers. Used for one request; never stored or logged. */
+/** The caller's own key, decrypted from the database for one request; never logged. */
 export type Credentials =
   | { provider: "anthropic"; apiKey: string }
   | { provider: "gemini"; apiKey: string; model: string; search: boolean };
@@ -31,22 +34,34 @@ const ANTHROPIC_MODEL = "claude-opus-5-5";
 const GEMINI_MODELS = new Set(["gemini-3.8-flash", "gemini-3.5-flash-lite"]);
 const MAX_CONTINUATIONS = 5;
 
-export function credentialsFrom(req: Request): Credentials | null {
-  const provider = req.headers.get("x-ai-provider");
-  const apiKey = req.headers.get("x-ai-key")?.trim();
+const toCredentials = (provider: string, apiKey: string, model?: string | null, search?: boolean): Credentials | null => {
   if (!apiKey || apiKey.length > 500) return null;
   if (provider === "anthropic") return { provider, apiKey };
-  if (provider === "gemini") {
-    const m = req.headers.get("x-ai-model") ?? "";
-    return { provider, apiKey, model: GEMINI_MODELS.has(m) ? m : "gemini-3.8-flash", search: req.headers.get("x-ai-search") === "1" };
-  }
+  if (provider === "gemini") return { provider, apiKey, model: model && GEMINI_MODELS.has(model) ? model : "gemini-3.5-flash-lite", search: !!search };
   return null;
+};
+
+/** The signed-in user's saved key, decrypted for this request only. Null when they haven't saved one. */
+export async function credentialsFor(userId: string): Promise<Credentials | null> {
+  const row = await getSealedKey(userId);
+  if (!row) return null;
+  try {
+    return toCredentials(row.provider, open(row.key_sealed), row.model, row.search);
+  } catch {
+    return null;
+  }
 }
+
+/** A key typed into Settings but not saved yet (only for "Test key"). */
+export const credentialsFromInput = (b: { provider?: unknown; apiKey?: unknown; model?: unknown; search?: unknown }) =>
+  typeof b.provider === "string" && typeof b.apiKey === "string"
+    ? toCredentials(b.provider, b.apiKey.trim(), typeof b.model === "string" ? b.model : null, b.search === true)
+    : null;
 
 export const modelOf = (c: Credentials) => (c.provider === "anthropic" ? ANTHROPIC_MODEL : c.model);
 
 export const noKey = () =>
-  Response.json({ code: "no_key", message: "Add your AI provider key in Settings (top right). It stays in your browser." }, { status: 401 });
+  Response.json({ code: "no_key", message: "Add your AI provider key in Settings (top right). It's stored encrypted on your account." }, { status: 401 });
 
 type ResearchArgs = {
   creds: Credentials;

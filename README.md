@@ -27,7 +27,7 @@ npx neonctl neon-auth oauth-provider delete --provider-id google --project-id <p
 npx neonctl neon-auth domain add https://<your-domain> --project-id <project> --branch main
 ```
 
-Put `DATABASE_URL`, `NEON_AUTH_BASE_URL` (the `base_url` printed by `neon-auth enable`), `NEON_AUTH_COOKIE_SECRET` (`openssl rand -base64 32`) and `ADMIN_EMAILS` (your email, for `/admin`) in `.env`. Then:
+Put `DATABASE_URL`, `NEON_AUTH_BASE_URL` (the `base_url` printed by `neon-auth enable`), `NEON_AUTH_COOKIE_SECRET` and `KEY_ENCRYPTION_SECRET` (each `openssl rand -base64 32`), and `ADMIN_EMAILS` (your email, for `/admin`) in `.env`. Then:
 
 ```bash
 node --env-file=.env scripts/migrate.mjs   # creates guides, chats, events
@@ -41,7 +41,7 @@ Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_UR
 - **Google Gemini (free):** create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) **in a project with no billing linked**. A billed project with depleted prepay credits is refused ("prepayment credits are depleted"), even for free models. Leave *Use Google Search* off on the free tier.
 - **Anthropic Claude:** a key from console.anthropic.com with API credits. Uses Claude Opus 5.5 with web search and web fetch, which gives the best-sourced guides.
 
-**Test key** checks it with a free call. The key is stored only in your browser.
+**Test key** checks it with a free call. **Save** stores it encrypted on your account.
 
 ## What's in it
 
@@ -75,7 +75,7 @@ Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_UR
    - Sources the model didn't open are dropped.
 4. **"Your case" first.** The same app can be L1 or L3 depending on scopes or who connects (internal vs. customers), so the case table is the default tab.
 5. **Agent vs. you.** Each step says who does it. The agent produces artifacts (plan docs, scope lists, justification text), not just descriptions.
-6. **Bring your own AI key, no server secrets.** Keys stay in the user's browser, are sent per request in a header, and are never stored or logged (errors are redacted). Key-like text is blocked in search and chat on both client and server. Gemini works on the free tier: without Google Search, the agent first picks official pages, then opens them with URL context.
+6. **Bring your own AI key, stored encrypted on the account.** Each user saves their own Anthropic or Gemini key in Settings. The server encrypts it with AES-256-GCM (`src/lib/secret-box.ts`, secret in `KEY_ENCRYPTION_SECRET`) before it touches the database, decrypts it only for the request that needs it, and never sends it back to the browser (Settings shows "ending in ••••abcd"). Encryption, not hashing: a hash can't be reversed, and the provider needs the real key. Nothing stays in the browser after sign-out. Key-like text is blocked in search and chat on both client and server. Gemini works on the free tier: without Google Search, the agent first picks official pages, then opens them with URL context; busy models fall back to Flash-Lite.
 7. **One shared library, attributed.** Generated guides, chats and a usage log live in Neon Postgres (`db/schema.sql`). Reading is open to everyone; generating and asking need sign-in (Neon Auth, passwordless email codes in a modal that resumes what you were doing), so every run has an owner and shows on `/admin`. Generated guides are immutable and cached; the library refreshes the moment a guide is saved.
 8. **Logos by waterfall:** bundled SVGL → SVGL API → BrandBird → Logo.dev → letter tile, resolved on the server and cached for a day. SVGL and BrandBird logos are mirrored into Cloudinary when configured (Logo.dev images are loaded from Logo.dev, as its terms expect). A new catalog entry with a `domain` gets a logo with no code change.
 
@@ -97,6 +97,7 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 - **Generated guides can't be edited or deleted from the UI** yet; an admin can remove rows in the database.
 - **Aircall's waiting times come from one real integration** (Aug–Oct 2026) plus Aircall's stated windows.
 - **`/guides/<unknown>` and `/g/<unknown>` show the not-found page with HTTP 200** (the page streams before the lookup finishes).
+- **Keep-alive:** `.github/workflows/keepalive.yml` calls `/api/health` (one `select 1`) every hour, because Vercel's Hobby plan only allows daily cron jobs. Neon still suspends compute after 5 idle minutes, so the first request after a quiet spell has a cold start of about a second. GitHub pauses scheduled workflows in repos with no commits for 60 days.
 - **No automatic re-check of provider docs.** Reviewed guides show the date they were last checked by hand.
 
 ## Project map

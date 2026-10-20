@@ -23,7 +23,7 @@ Guides explain AND move the developer forward: the agent should produce things (
 ## Rules (non-negotiable)
 - Every claim carries an evidence label: Tested (done first-hand), Sourced (links a page actually read), Unverified. A generated guide can never be Tested.
 - No credentials in the repo, the guides, or the chat. The chat and search box block key-like input (client and server).
-- AI keys are bring-your-own: each user enters an Anthropic or Gemini key in Settings. It is stored only in their browser (localStorage), sent per request in `x-ai-*` headers, used for that request, and never stored or logged server-side (errors are redacted). There is no server-side AI key. Only `LOGO_DEV_TOKEN` (publishable `pk_`) lives in `.env`; ship `.env.example`.
+- AI keys are bring-your-own, saved per user in `user_settings`, encrypted with AES-256-GCM (`src/lib/secret-box.ts`, `KEY_ENCRYPTION_SECRET`). Encrypt, don't hash: the server needs the real key. Decrypt only in `credentialsFor(userId)` for the request; never return or log the key (the UI gets `last4`). Nothing is kept in localStorage; an old browser key is migrated once and wiped. There is no server-wide AI key. Only `LOGO_DEV_TOKEN` (publishable `pk_`) lives in `.env`; ship `.env.example`.
 - Never invent precise review durations. Use ranges and list unknowns.
 - Brand logos: from SVGL, BrandBird and Logo.dev (see Current state), used under each brand's terms with attribution in the footer. The letter tile is always the last fallback.
 

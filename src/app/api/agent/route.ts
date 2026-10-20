@@ -1,7 +1,7 @@
 import { currentUser, signInRequired } from "@/lib/auth/server";
 import { appendChat, logEvent } from "@/lib/db";
 import { agentSystem } from "@/lib/prompts";
-import { type ChatTurn, credentialsFrom, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
+import { type ChatTurn, credentialsFor, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Guide } from "@/lib/types";
 
@@ -12,7 +12,7 @@ type Body = { guide?: Guide; chatKey?: unknown; messages?: { role?: unknown; con
 export async function POST(req: Request) {
   const user = await currentUser();
   if (!user) return signInRequired();
-  const creds = credentialsFrom(req);
+  const creds = await credentialsFor(user.id);
   if (!creds) return noKey();
   const body = (await req.json().catch(() => null)) as Body | null;
   const g = body?.guide;

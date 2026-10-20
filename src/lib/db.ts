@@ -129,3 +129,34 @@ export async function adminOverview() {
     from neon_auth."user" u order by u."createdAt" desc limit 100`) as Record<string, unknown>[];
   return { counts, events, guides, users };
 }
+
+/* ---------- AI provider settings (key encrypted; see secret-box.ts) ---------- */
+
+export type AiSettingsSummary = { provider: "anthropic" | "gemini"; model: string | null; search: boolean; last4: string } | null;
+
+/** What the browser may see: provider, model, and the key's last 4 characters. Never the key. */
+export async function getAiSummary(userId: string): Promise<AiSettingsSummary> {
+  const rows = (await sql()`select provider, model, search, key_last4 from user_settings where user_id = ${userId}`) as Record<string, unknown>[];
+  const r = rows[0];
+  return r ? { provider: r.provider as "anthropic" | "gemini", model: (r.model as string) ?? null, search: !!r.search, last4: r.key_last4 as string } : null;
+}
+
+export async function getSealedKey(userId: string) {
+  const rows = (await sql()`select provider, model, search, key_sealed from user_settings where user_id = ${userId}`) as Record<string, unknown>[];
+  return (rows[0] as { provider: "anthropic" | "gemini"; model: string | null; search: boolean; key_sealed: string } | undefined) ?? null;
+}
+
+export async function saveAiSettings(userId: string, s: { provider: string; model: string | null; search: boolean; keySealed?: string; last4?: string }) {
+  if (s.keySealed && s.last4) {
+    await sql()`insert into user_settings (user_id, provider, model, search, key_sealed, key_last4)
+      values (${userId}, ${s.provider}, ${s.model}, ${s.search}, ${s.keySealed}, ${s.last4})
+      on conflict (user_id) do update set provider = excluded.provider, model = excluded.model, search = excluded.search,
+        key_sealed = excluded.key_sealed, key_last4 = excluded.key_last4, updated_at = now()`;
+  } else {
+    await sql()`update user_settings set model = ${s.model}, search = ${s.search}, updated_at = now() where user_id = ${userId}`;
+  }
+}
+
+export async function deleteAiSettings(userId: string) {
+  await sql()`delete from user_settings where user_id = ${userId}`;
+}

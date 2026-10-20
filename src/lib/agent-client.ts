@@ -1,11 +1,10 @@
 "use client";
 
-import { aiHeaders } from "./ai-settings";
 import type { GeneratePayload, Guide, LogoInfo } from "./types";
 
 /**
  * Browser side of the agent. Both routes stream NDJSON: research events (`search`, `fetch`, `text`)
- * followed by `done` (with the payload) or `error`. The user's own key (Settings) rides along in request headers.
+ * followed by `done` (with the payload) or `error`. The server uses the key saved (encrypted) on the user's account.
  */
 
 /** Asks the header's Settings button to open (used when no key is saved). */
@@ -24,7 +23,7 @@ export type AgentEvent =
 async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent) => void, signal?: AbortSignal): Promise<AgentEvent & { type: "done" }> {
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...aiHeaders() }, body: JSON.stringify(body), signal });
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   } catch (err) {
     if (signal?.aborted) throw err;
     throw new Error("Couldn't reach the server. Check your connection and try again.");

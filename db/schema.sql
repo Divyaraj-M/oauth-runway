@@ -37,3 +37,15 @@ create table if not exists events (
   created_at timestamptz not null default now()
 );
 create index if not exists events_created on events (created_at desc);
+
+-- Each user's AI provider settings. The key is encrypted (src/lib/secret-box.ts); only the last 4 chars are kept
+-- in clear so the UI can show "ending in ••••abcd". Never returned to the browser.
+create table if not exists user_settings (
+  user_id uuid primary key,
+  provider text not null,
+  model text,
+  search boolean not null default false,
+  key_sealed text not null,
+  key_last4 text not null,
+  updated_at timestamptz not null default now()
+);
