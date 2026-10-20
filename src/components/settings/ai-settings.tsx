@@ -1,14 +1,17 @@
 "use client";
 
-import { CheckIcon, EyeIcon, EyeOffIcon, Loader2Icon, SettingsIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, EyeOffIcon, SettingsIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { type AiSettings, GEMINI_MODELS, type Provider, aiHeaders, clearSettings, loadSettings, saveSettings, useHasKey } from "@/lib/ai-settings";
 import { cn } from "@/lib/utils";
 
@@ -91,76 +94,80 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onClose();
           }}
         >
-          <div className="grid gap-2">
-            <label htmlFor="ai-provider" className="text-sm leading-none font-medium">
-              Provider
-            </label>
-            <Select value={s.provider} onValueChange={(v) => set({ provider: v as Provider })}>
-              <SelectTrigger id="ai-provider" className="h-9 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gemini">Google Gemini (free tier)</SelectItem>
-                <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{p.model}</p>
-          </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="ai-provider">Provider</FieldLabel>
+              <Select value={s.provider} onValueChange={(v) => set({ provider: v as Provider })}>
+                <SelectTrigger id="ai-provider" className="h-9 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gemini">Google Gemini (free tier)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldDescription>{p.model}</FieldDescription>
+            </Field>
 
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="ai-key" className="text-sm leading-none font-medium">
-                {p.label} API key
-              </label>
-              <a href={p.getKey} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
-                Get a key
-              </a>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                id="ai-key"
-                type={show ? "text" : "password"}
-                autoComplete="off"
-                spellCheck={false}
-                value={s.apiKey}
-                onChange={(e) => set({ apiKey: e.target.value })}
-                placeholder={p.keyHint}
-                className="h-9 font-mono"
-              />
-              <Button type="button" variant="outline" size="icon-lg" onClick={() => setShow((x) => !x)} aria-label={show ? "Hide key" : "Show key"}>
-                {show ? <EyeOffIcon /> : <EyeIcon />}
-              </Button>
-            </div>
-          </div>
-
-          {s.provider === "gemini" && (
-            <>
-              <div className="grid gap-2">
-                <label htmlFor="ai-model" className="text-sm leading-none font-medium">
-                  Model
-                </label>
-                <Select value={s.geminiModel} onValueChange={(v) => set({ geminiModel: v })}>
-                  <SelectTrigger id="ai-model" className="h-9 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GEMINI_MODELS.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <Field>
+              <div className="flex items-center justify-between">
+                <FieldLabel htmlFor="ai-key">{p.label} API key</FieldLabel>
+                <a
+                  href={p.getKey}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Get a key
+                </a>
               </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-0.5 size-4 accent-current" checked={s.geminiSearch} onChange={(e) => set({ geminiSearch: e.target.checked })} />
-                <span>
-                  Use Google Search
-                  <span className="block text-xs text-muted-foreground">Paid Gemini tier only. Off: the agent picks official pages and reads them.</span>
-                </span>
-              </label>
-            </>
-          )}
+              <InputGroup className="h-9">
+                <InputGroupInput
+                  id="ai-key"
+                  type={show ? "text" : "password"}
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={s.apiKey}
+                  onChange={(e) => set({ apiKey: e.target.value })}
+                  placeholder={p.keyHint}
+                  className="font-mono"
+                  aria-invalid={check.kind === "error" || undefined}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton size="icon-xs" onClick={() => setShow((x) => !x)} aria-label={show ? "Hide key" : "Show key"}>
+                    {show ? <EyeOffIcon /> : <EyeIcon />}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+
+            {s.provider === "gemini" && (
+              <>
+                <Field>
+                  <FieldLabel htmlFor="ai-model">Model</FieldLabel>
+                  <Select value={s.geminiModel} onValueChange={(v) => set({ geminiModel: v })}>
+                    <SelectTrigger id="ai-model" className="h-9 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GEMINI_MODELS.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field orientation="horizontal">
+                  <Checkbox id="ai-search" checked={s.geminiSearch} onCheckedChange={(v) => set({ geminiSearch: v === true })} />
+                  <FieldContent>
+                    <FieldLabel htmlFor="ai-search">Use Google Search</FieldLabel>
+                    <FieldDescription>Paid Gemini tier only. Off: the agent picks official pages and reads them.</FieldDescription>
+                  </FieldContent>
+                </Field>
+              </>
+            )}
+          </FieldGroup>
 
           {check.kind === "ok" && (
             <Alert className="border-l1/40 text-l1">
@@ -200,7 +207,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             </Button>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button type="button" variant="outline" size="lg" className="px-4" onClick={test} disabled={check.kind === "checking"}>
-                {check.kind === "checking" && <Loader2Icon className="animate-spin" />}
+                {check.kind === "checking" && <Spinner />}
                 Test key
               </Button>
               <Button type="submit" size="lg" className="px-4">

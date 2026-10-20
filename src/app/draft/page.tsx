@@ -1,10 +1,12 @@
 "use client";
 
+import { FileQuestionIcon } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
 import { GuideView } from "@/components/guide/guide-view";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { type Draft, loadDraft } from "@/lib/agent-client";
 
 // The live draft (guide + logo + research log from /api/generate) lives in sessionStorage only:
@@ -20,13 +22,20 @@ export default function DraftPage() {
   const d: Draft | null = raw ? JSON.parse(raw) : null;
   if (!d?.guide)
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">No live draft here</h1>
-        <p className="max-w-sm text-sm text-muted-foreground">Drafts stay in this browser tab only. Describe an app on the home page and the agent writes a new one.</p>
-        <Button asChild size="lg" className="px-4">
-          <Link href="/">Back to the library</Link>
-        </Button>
-      </div>
+      <Empty className="enter py-16">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FileQuestionIcon />
+          </EmptyMedia>
+          <EmptyTitle>No live draft here</EmptyTitle>
+          <EmptyDescription>Drafts stay in this browser tab only. Describe an app on the home page and the agent researches a new one.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild size="lg" className="px-4">
+            <Link href="/">Back to the library</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   return <GuideView guide={d.guide} logo={d.logo} research={d.research} />;
 }

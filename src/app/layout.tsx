@@ -24,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={300} skipDelayDuration={150}>
           <div className="mx-auto flex max-w-4xl flex-col">
             <header className="flex h-14 items-center justify-between border-b">
               <Link href="/" className="flex items-center gap-2 rounded-md text-sm font-semibold tracking-tight focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none">

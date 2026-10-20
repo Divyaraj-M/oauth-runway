@@ -1,15 +1,24 @@
+import { SearchXIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">No reviewed guide for this app</h1>
-      <p className="max-w-sm text-sm text-muted-foreground">Describe the app on the home page and the agent writes a live draft.</p>
-      <Button asChild size="lg" className="px-4">
-        <Link href="/">Back to the library</Link>
-      </Button>
-    </div>
+    <Empty className="enter py-16">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <SearchXIcon />
+        </EmptyMedia>
+        <EmptyTitle>No reviewed guide for this app</EmptyTitle>
+        <EmptyDescription>Describe the app on the home page and the agent researches a live draft.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button asChild size="lg" className="px-4">
+          <Link href="/">Back to the library</Link>
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }

@@ -3,7 +3,6 @@
 import {
   BotIcon,
   CheckIcon,
-  ChevronRightIcon,
   ClockIcon,
   CopyIcon,
   ExternalLinkIcon,
@@ -19,6 +18,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -69,18 +69,24 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
   };
 
   let i = 0;
-  // Staggered entrance: each top-level block gets the next delay index.
-  const stagger = () => ({ style: { ["--i" as string]: i++ } });
+  // Staggered entrance, capped so the whole page has landed within ~150ms of delay.
+  const stagger = () => ({ style: { ["--i" as string]: Math.min(i++, 3) } });
 
   return (
     <>
-      <nav aria-label="Breadcrumb" {...stagger()} className="enter flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/" className="transition-colors hover:text-foreground">
-          Library
-        </Link>
-        <ChevronRightIcon className="size-3.5" />
-        <span className="text-foreground">{g.app}</span>
-      </nav>
+      <Breadcrumb {...stagger()} className="enter">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/">Library</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{g.app}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <header {...stagger()} className="enter flex flex-col gap-3 pt-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -187,7 +193,7 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           </TabsList>
         </div>
 
-        <TabsContent value="steps" className="animate-in fade-in-0">
+        <TabsContent value="steps">
           <Card className="py-0">
             <ol className="divide-y">
               {g.steps.map((s, idx) => (
@@ -218,7 +224,7 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           </Card>
         </TabsContent>
 
-        <TabsContent value="case" className="animate-in fade-in-0">
+        <TabsContent value="case">
           <Card className="py-0">
             <Table>
               <TableHeader>
@@ -243,7 +249,7 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           </Card>
         </TabsContent>
 
-        <TabsContent value="blockers" className="flex animate-in flex-col gap-2 fade-in-0">
+        <TabsContent value="blockers" className="flex flex-col gap-2">
           {g.blockers.map((b) => (
             <Alert key={b.text} role="note">
               <TriangleAlertIcon className="text-l3!" />
@@ -255,7 +261,7 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           ))}
         </TabsContent>
 
-        <TabsContent value="roles" className="grid animate-in grid-cols-1 gap-3 fade-in-0 sm:grid-cols-2">
+        <TabsContent value="roles" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Card className="gap-3 p-5">
             <div className="flex items-center gap-2 font-semibold tracking-tight">
               <BotIcon className="size-4" />
@@ -286,7 +292,7 @@ export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: L
           </Card>
         </TabsContent>
 
-        <TabsContent value="sources" className="grid animate-in grid-cols-1 gap-3 fade-in-0">
+        <TabsContent value="sources" className="grid grid-cols-1 gap-3">
           <Card className="gap-3 p-5">
             <div className="font-semibold tracking-tight">Not confirmed</div>
             <ul className="flex flex-col gap-2 text-sm">

@@ -122,47 +122,45 @@
   }
 }
 
-/* Motion: fast and restrained. Only transform, opacity and filter animate. */
+/*
+ * Motion: a productivity tool, so fast and restrained (under 300ms, custom curves).
+ * Only transform, opacity and filter animate. Frequent actions (tab switches, filtering) don't animate at all.
+ */
 @keyframes enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
-    filter: blur(4px);
+    transform: translateY(6px);
+    filter: blur(2px);
   }
 }
 @keyframes pop {
   from {
     opacity: 0;
-    transform: scale(0.8);
-    filter: blur(2px);
+    transform: scale(0.9);
   }
 }
+/* Page and list entrances; `--i` staggers siblings 40ms apart. `backwards` keeps delayed items hidden until they start. */
 @utility enter {
-  animation: enter 320ms var(--ease-out) backwards;
+  animation: enter 240ms var(--ease-out) backwards;
   animation-delay: calc(var(--i, 0) * 40ms);
 }
+/* A step finishing in a research trace. */
 @utility pop {
-  animation: pop 220ms var(--ease-out) backwards;
+  animation: pop 180ms var(--ease-out) backwards;
 }
 @utility tnum {
   font-variant-numeric: tabular-nums;
 }
 
-details > summary {
-  list-style: none;
-}
-details > summary::-webkit-details-marker {
-  display: none;
-}
-details[open] .chev {
-  transform: rotate(180deg);
-}
-
+/* Reduced motion: collapse durations instead of removing animations, so every element still lands in its final state. */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
   ::after {
-    animation: none !important;
-    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

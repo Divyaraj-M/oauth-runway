@@ -1,20 +1,22 @@
 "use client";
 
-import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, Loader2Icon, SearchIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, SearchIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AppLogo } from "@/components/guide/app-logo";
-import { LevelMeter, tag } from "@/components/guide/bits";
+import { LevelMeter } from "@/components/guide/bits";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type AgentEvent, generateGuide, saveDraft } from "@/lib/agent-client";
 import { LEVELS, LEVEL_CLASS, fmtDate, levelOf } from "@/lib/levels";
 import { looksLikeSecret } from "@/lib/secrets";
@@ -92,61 +94,69 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
 
   return (
     <>
-      <section className="enter flex flex-col items-center gap-5 py-10 text-center">
-        <h1 className="max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">How long until your OAuth app is approved?</h1>
-        <p className="max-w-lg text-sm text-muted-foreground sm:text-base">
-          Name an app and what your agent should do in it. You get the difficulty, the work time, the waiting time, and what blocks approval.
-        </p>
-        <form
-          className="flex w-full max-w-2xl items-center gap-2 rounded-lg border border-input bg-background p-1.5 pl-3 shadow-sm focus-within:ring-1 focus-within:ring-ring"
-          onSubmit={(e) => {
-            e.preventDefault();
-            generate(q);
-          }}
-        >
-          <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
-          <label htmlFor="g-q" className="sr-only">
-            Which app, and what should your agent do in it?
-          </label>
-          <input
-            id="g-q"
-            ref={input}
-            required
-            autoComplete="off"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            placeholder="Which app, and what should your agent do in it?"
-          />
-          <Button type="submit" size="lg" className="px-4" disabled={gen.kind === "running"}>
-            Get guide
-            <ArrowRightIcon />
-          </Button>
-        </form>
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-          <span>Try</span>
-          {TRY.map(([n, text]) => (
-            <Badge
-              key={n}
-              asChild
-              variant="outline"
-              className={cn(tag, "cursor-pointer text-foreground hover:bg-accent")}
-            >
-              <button
+      <section className="grid grid-cols-1 gap-8 pt-6 pb-14 md:grid-cols-[1.25fr_1fr] md:items-end md:gap-x-12">
+        <div className="enter flex flex-col gap-4">
+          <h1 className="text-4xl leading-[1.08] font-semibold tracking-tighter text-balance md:text-[2.75rem]">How long until your OAuth app is approved?</h1>
+          <p className="max-w-[52ch] leading-relaxed text-muted-foreground">
+            Name an app and what your agent should do in it. You get the difficulty, the work time, the waiting time, and what blocks approval.
+          </p>
+        </div>
+
+        <LevelLegend />
+
+        <div className="enter flex flex-col gap-3 md:col-span-2" style={{ ["--i" as string]: 1 }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              generate(q);
+            }}
+          >
+            <InputGroup className="h-11 bg-background shadow-xs">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="g-q"
+                ref={input}
+                required
+                autoComplete="off"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Which app, and what should your agent do in it?"
+                aria-label="Which app, and what should your agent do in it?"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton type="submit" variant="default" size="sm" disabled={gen.kind === "running"}>
+                  Get guide
+                  <ArrowRightIcon />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </form>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>Try</span>
+            {TRY.map(([n, text]) => (
+              <Button
+                key={n}
                 type="button"
+                variant="outline"
+                size="xs"
                 onClick={() => {
                   setQ(text);
                   input.current?.focus();
                 }}
               >
                 {n}
-              </button>
-            </Badge>
-          ))}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="w-full max-w-2xl text-left">
-          <GenStatus state={gen} />
-        </div>
+
+        {gen.kind !== "idle" && (
+          <div className="md:col-span-2">
+            <GenStatus state={gen} />
+          </div>
+        )}
       </section>
 
       <Library
@@ -160,11 +170,32 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
   );
 }
 
+/** The four difficulty levels, so the meters in the list below read at a glance. */
+function LevelLegend() {
+  return (
+    <ol className="enter order-last flex flex-col divide-y rounded-xl border bg-card md:order-none" style={{ ["--i" as string]: 1 }} aria-label="Difficulty levels">
+      {LEVELS.map((l) => (
+        <li key={l.n} className="flex items-center gap-3 px-4 py-3">
+          <div className="w-12 shrink-0">
+            <LevelMeter n={l.n} />
+          </div>
+          <div className="flex min-w-0 flex-col">
+            <span className={cn("text-sm font-medium", LEVEL_CLASS[l.n].text)}>
+              L{l.n} · {l.name}
+            </span>
+            <span className="text-xs text-muted-foreground md:truncate">{l.desc}</span>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function GenStatus({ state }: { state: GenState }) {
   if (state.kind === "idle") return null;
   if (state.kind === "error")
     return (
-      <Alert variant="destructive" className="border-destructive/50">
+      <Alert variant="destructive" className="enter border-destructive/50">
         <TriangleAlertIcon />
         <AlertTitle>{state.title}</AlertTitle>
         <AlertDescription>{state.message}</AlertDescription>
@@ -176,17 +207,17 @@ function GenStatus({ state }: { state: GenState }) {
   const writing = chars > 0;
   return (
     <Card className="enter gap-4 p-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="font-semibold tracking-tight">{writing ? "Writing the guide" : "Researching the provider's docs"}</span>
-        <span className="tnum text-xs text-muted-foreground">
-          {searches} searches · {opened} pages opened{writing ? ` · ${chars} characters` : ""}
+        <span className="tnum font-mono text-xs text-muted-foreground">
+          {searches} searches · {opened} pages opened{writing ? ` · ${chars} chars` : ""}
         </span>
       </div>
-      <Progress value={writing ? 90 : Math.min(80, 10 + steps.length * 8)} className="h-1.5" />
+      <Progress value={writing ? 90 : Math.min(80, 10 + steps.length * 8)} className="h-1" />
       <ol className="flex flex-col gap-2 text-sm">
         {steps.length === 0 && (
           <li className="flex items-center gap-2 text-muted-foreground">
-            <Loader2Icon className="size-4 animate-spin" />
+            <Spinner />
             Finding the developer portal
           </li>
         )}
@@ -194,7 +225,7 @@ function GenStatus({ state }: { state: GenState }) {
           const last = i === arr.length - 1 && !writing;
           return (
             <li key={`${x.kind}${x.text}${i}`} className={cn("enter flex min-w-0 items-center gap-2", !last && "text-muted-foreground")}>
-              {last ? <Loader2Icon className="size-4 shrink-0 animate-spin" /> : <CheckIcon className="pop size-4 shrink-0 text-l1" />}
+              {last ? <Spinner className="shrink-0" /> : <CheckIcon className="pop size-4 shrink-0 text-l1" />}
               {x.kind === "note" ? (
                 <span className="min-w-0 truncate">{x.text}</span>
               ) : (
@@ -207,16 +238,17 @@ function GenStatus({ state }: { state: GenState }) {
           );
         })}
         {writing && (
-          <li className="flex items-center gap-2">
-            <Loader2Icon className="size-4 animate-spin" />
+          <li className="enter flex items-center gap-2">
+            <Spinner />
             Writing the guide from what it opened
           </li>
         )}
       </ol>
-      <div className="flex flex-col gap-2 pt-1">
-        <Skeleton className="h-4 w-2/3" />
+      {/* Placeholder shaped like the guide header the draft will open on. */}
+      <div className="flex flex-col gap-2 border-t pt-4">
+        <Skeleton className="h-5 w-1/3" />
         <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
+        <Skeleton className="h-4 w-4/5" />
       </div>
     </Card>
   );
@@ -254,67 +286,71 @@ function Library({
   const showToggle = collapsed ? hidden > 0 : showAll && !ql && !filter;
 
   return (
-    <section className="enter flex flex-col gap-4" style={{ ["--i" as string]: 1 }}>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold tracking-tight">Apps</h2>
-        <p className="text-sm text-muted-foreground">Reviewed guides show their difficulty level. For the rest, the agent writes a live draft.</p>
-      </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <label htmlFor="lib-q" className="sr-only">
-            Filter apps
-          </label>
-          <Input id="lib-q" autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter apps…" className="h-9 pl-9" />
+    <section className="enter flex flex-col gap-4" style={{ ["--i" as string]: 2 }}>
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold tracking-tight">Apps</h2>
+          <p className="text-sm text-muted-foreground">Reviewed guides show their level. For the rest, the agent researches a live draft.</p>
         </div>
-        <div className="overflow-x-auto">
-          <Tabs value={String(filter)} onValueChange={(v) => setFilter(Number(v))}>
-            <TabsList className="h-9">
-              {FILTERS.map(([n, t]) => (
-                <TabsTrigger key={n} value={String(n)} className="px-3" title={n >= 1 && n <= 4 ? `Level ${n} · ${LEVELS[n - 1].name}` : undefined}>
-                  {t}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
-      <Card className="gap-0 overflow-hidden py-0">
-        <ul className="divide-y">
-          {rows.length === 0 && (
-            <li className="flex flex-col items-center gap-2 p-10 text-center">
-              <span className="font-medium">No apps match</span>
-              <span className="text-sm text-muted-foreground">Describe the app in the search box at the top and the agent writes a guide.</span>
-            </li>
-          )}
-          {rows.map((c, idx) => {
-            const g = guides[c.key];
-            return g ? (
-              <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
-            ) : (
-              <UnratedRow key={c.key} c={c} i={idx} logo={logos[c.key]} onGenerate={onGenerate} />
-            );
-          })}
-        </ul>
-      </Card>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          {showToggle && (
-            <Button variant="outline" size="lg" className="px-4" onClick={() => setShowAll((s) => !s)}>
-              {collapsed ? `Show all ${catalog.length} apps` : "Show reviewed only"}
-              <ChevronDownIcon className={cn("size-3.5", !collapsed && "rotate-180")} />
-            </Button>
-          )}
-          <Button size="lg" className="px-4" onClick={() => setDialogOpen(true)}>
-            <BotIcon />
-            Start a guide for an app not listed
-          </Button>
-        </div>
-        <p className="tnum text-xs text-muted-foreground">
-          {rows.length} of {catalog.length} apps · {Object.keys(guides).length} reviewed
+        <p className="tnum hidden shrink-0 font-mono text-xs text-muted-foreground sm:block">
+          {rows.length}/{catalog.length} · {Object.keys(guides).length} reviewed
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <InputGroup className="h-9 sm:max-w-xs">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter apps…" aria-label="Filter apps" />
+        </InputGroup>
+        <div className="overflow-x-auto">
+          <ToggleGroup type="single" variant="outline" size="sm" value={String(filter)} onValueChange={(v) => setFilter(v ? Number(v) : 0)} aria-label="Filter by level">
+            {FILTERS.map(([n, t]) => (
+              <ToggleGroupItem key={n} value={String(n)} className="px-3" title={n >= 1 && n <= 4 ? `Level ${n} · ${LEVELS[n - 1].name}` : undefined}>
+                {t}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border bg-card" role="list">
+        {rows.length === 0 ? (
+          <Empty className="py-12">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchXIcon />
+              </EmptyMedia>
+              <EmptyTitle>No apps match</EmptyTitle>
+              <EmptyDescription>Describe the app in the search box at the top and the agent researches a guide.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <div className="divide-y">
+            {rows.map((c, idx) => {
+              const g = guides[c.key];
+              return g ? (
+                <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
+              ) : (
+                <UnratedRow key={c.key} c={c} i={showAll ? idx : -1} logo={logos[c.key]} onGenerate={onGenerate} />
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {showToggle && (
+          <Button variant="outline" size="lg" className="px-4" onClick={() => setShowAll((s) => !s)}>
+            {collapsed ? `Show all ${catalog.length} apps` : "Show reviewed only"}
+            <ChevronDownIcon className={cn("transition-transform duration-200 ease-(--ease-out)", !collapsed && "rotate-180")} />
+          </Button>
+        )}
+        <Button size="lg" className="px-4" onClick={() => setDialogOpen(true)}>
+          <BotIcon />
+          Start a guide for an app not listed
+        </Button>
       </div>
 
       <NewAppDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={onNewApp} />
@@ -325,54 +361,58 @@ function Library({
 function ReviewedRow({ c, g, logo }: { c: CatalogEntry; g: Guide; logo?: LogoInfo }) {
   const l = levelOf(g.difficulty);
   return (
-    <li>
-      <Link
-        href={`/guides/${c.key}`}
-        className="flex w-full min-w-0 items-start gap-4 p-4 text-left transition-colors hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset sm:items-center"
-      >
-        <AppLogo name={c.app} logo={logo} />
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+    <Item asChild className="rounded-none px-4 py-4" role="listitem">
+      <Link href={`/guides/${c.key}`}>
+        <ItemMedia>
+          <AppLogo name={c.app} logo={logo} />
+        </ItemMedia>
+        <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
           <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
-            <span className="flex items-baseline gap-2">
-              <span className="font-semibold tracking-tight">{c.app}</span>
-              <span className="text-xs text-muted-foreground">{c.cat}</span>
-            </span>
+            <ItemTitle>
+              {c.app}
+              <span className="text-xs font-normal text-muted-foreground">{c.cat}</span>
+            </ItemTitle>
             <div className="flex items-center gap-2">
               <div className="w-14 shrink-0">
                 <LevelMeter n={l.n} />
               </div>
               <span className={cn("text-xs font-medium", LEVEL_CLASS[l.n].text)}>
-                Level {l.n} · {l.name}
+                L{l.n} · {l.name}
               </span>
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="text-sm text-muted-foreground">{g.verdict.split(". ")[0]}.</p>
+            <ItemDescription className="line-clamp-1">{g.verdict.split(". ")[0]}.</ItemDescription>
             <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <ClockIcon className="size-3.5" />
                 Work {g.hands_on.text} · Wait {g.waiting.normal}
               </span>
-              <span>Last updated {fmtDate(g.checked ?? "2026-10-20")}</span>
+              <span>Updated {fmtDate(g.checked ?? "2026-10-20")}</span>
             </div>
           </div>
-        </div>
-        <ChevronRightIcon className="hidden size-4 self-center text-muted-foreground sm:block" />
+        </ItemContent>
+        <ItemActions className="hidden sm:flex">
+          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-150 ease-(--ease-out) group-hover/item:translate-x-0.5" />
+        </ItemActions>
       </Link>
-    </li>
+    </Item>
   );
 }
 
+/** `i` ≥ 0 staggers the row in when "Show all" reveals it; filtering (frequent) never animates. */
 function UnratedRow({ c, i, logo, onGenerate }: { c: CatalogEntry; i: number; logo?: LogoInfo; onGenerate: (app: string) => void }) {
   return (
-    <li className="enter flex items-start gap-4 p-4 sm:items-center" style={{ ["--i" as string]: i }}>
-      <AppLogo name={c.app} logo={logo} />
-      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+    <Item className={cn("rounded-none px-4 py-4", i >= 0 && "enter")} style={i >= 0 ? { ["--i" as string]: Math.min(i, 8) } : undefined} role="listitem">
+      <ItemMedia>
+        <AppLogo name={c.app} logo={logo} />
+      </ItemMedia>
+      <ItemContent className="min-w-0 gap-2 sm:flex-row sm:items-center sm:gap-6">
         <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
-          <span className="flex items-baseline gap-2">
-            <span className="font-semibold tracking-tight">{c.app}</span>
-            <span className="text-xs text-muted-foreground">{c.cat}</span>
-          </span>
+          <ItemTitle>
+            {c.app}
+            <span className="text-xs font-normal text-muted-foreground">{c.cat}</span>
+          </ItemTitle>
           <div className="flex items-center gap-2">
             <div className="w-14 shrink-0">
               <LevelMeter n={0} />
@@ -380,13 +420,15 @@ function UnratedRow({ c, i, logo, onGenerate }: { c: CatalogEntry; i: number; lo
             <span className="text-xs font-medium text-muted-foreground">Not rated yet</span>
           </div>
         </div>
-        <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-          No reviewed guide yet. The agent can write a live draft{c.provider !== c.app ? ` (provider: ${c.provider})` : ""}.
-        </p>
-      </div>
-      <Button variant="outline" size="sm" className="shrink-0 self-center" onClick={() => onGenerate(c.app)}>
-        Generate guide
-      </Button>
-    </li>
+        <ItemDescription className="min-w-0 flex-1">
+          No reviewed guide yet. The agent can research a live draft{c.provider !== c.app ? ` (provider: ${c.provider})` : ""}.
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <Button variant="outline" size="sm" onClick={() => onGenerate(c.app)}>
+          Generate guide
+        </Button>
+      </ItemActions>
+    </Item>
   );
 }

@@ -5,19 +5,12 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-export function NewAppDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (query: string) => void;
-}) {
+export function NewAppDialog({ open, onOpenChange, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (query: string) => void }) {
   const [app, setApp] = useState("");
   const [what, setWhat] = useState("");
   const [who, setWho] = useState("for my customers");
@@ -27,7 +20,9 @@ export function NewAppDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Start a guide for an app not listed</DialogTitle>
-          <DialogDescription>The agent researches the app and writes a live draft. Every line is marked Unverified until a person reviews it.</DialogDescription>
+          <DialogDescription>
+            The agent researches the app and writes a live draft. Every line is marked Unverified until a person reviews it.
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
@@ -38,32 +33,45 @@ export function NewAppDialog({
             onSubmit(`${app.trim()}: ${what.trim() || "typical read and write access"}, ${who}`);
           }}
         >
-          <div className="grid gap-2">
-            <label htmlFor="dlg-app" className="text-sm leading-none font-medium">
-              App name or website
-            </label>
-            <Input id="dlg-app" required autoFocus autoComplete="off" value={app} onChange={(e) => setApp(e.target.value)} placeholder="Pipedrive, intercom.com…" className="h-9" />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="dlg-do" className="text-sm leading-none font-medium">
-              What your agent should do in it
-            </label>
-            <Textarea id="dlg-do" rows={2} value={what} onChange={(e) => setWhat(e.target.value)} placeholder="Read deals and update their stage" className="min-h-[60px]" />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="dlg-who" className="text-sm leading-none font-medium">
-              Who connects it
-            </label>
-            <Select value={who} onValueChange={setWho}>
-              <SelectTrigger id="dlg-who" className="h-9 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="for my customers">My customers (public app)</SelectItem>
-                <SelectItem value="for my own company only">Only my company (internal)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="dlg-app">App name or website</FieldLabel>
+              <Input
+                id="dlg-app"
+                required
+                autoFocus
+                autoComplete="off"
+                value={app}
+                onChange={(e) => setApp(e.target.value)}
+                placeholder="Pipedrive, intercom.com…"
+                className="h-9"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="dlg-do">What your agent should do in it</FieldLabel>
+              <Textarea
+                id="dlg-do"
+                rows={2}
+                value={what}
+                onChange={(e) => setWhat(e.target.value)}
+                placeholder="Read deals and update their stage"
+                className="min-h-[60px]"
+              />
+              <FieldDescription>The actions decide which scopes you need, and scopes decide the review.</FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="dlg-who">Who connects it</FieldLabel>
+              <Select value={who} onValueChange={setWho}>
+                <SelectTrigger id="dlg-who" className="h-9 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="for my customers">My customers (public app)</SelectItem>
+                  <SelectItem value="for my own company only">Only my company (internal)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline" size="lg" className="px-4">
