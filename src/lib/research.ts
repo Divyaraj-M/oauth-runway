@@ -209,9 +209,22 @@ export function describeError(err: unknown): { status: number; message: string }
     if (err.status === 429) return { status: 429, message: "Gemini rate limit hit (free tier limits are low). Wait a minute and try again." };
     if (err.status === 400 && /search|grounding/i.test(err.message))
       return { status: 400, message: "Google Search isn't available for this key (free tier). Turn it off in Settings." };
+    // 4xx bodies carry a readable reason (billing, quota, model access) and never echo the key, so pass it through.
+    const reason = geminiReason(err.message);
+    if (err.status >= 400 && err.status < 500 && reason) return { status: err.status, message: `Google rejected the request: ${reason}` };
     return { status: 502, message: `Gemini returned an error (${err.status}). Try again.` };
   }
   return { status: 500, message: "Something went wrong. Try again." };
+}
+
+/** Gemini's ApiError.message is the JSON error body; pull out its human-readable `message`. */
+function geminiReason(raw: string): string | null {
+  try {
+    const msg = (JSON.parse(raw) as { error?: { message?: string } }).error?.message?.trim();
+    return msg ? msg.replace(/\s*Learn more at \S+/, "") : null;
+  } catch {
+    return null;
+  }
 }
 
 const redact = (s: string, secret: string) => (secret ? s.split(secret).join("[redacted]") : s);
