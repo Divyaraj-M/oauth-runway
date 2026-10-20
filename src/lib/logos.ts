@@ -45,8 +45,10 @@ async function logoDev(domain: string, token: string): Promise<string | null> {
   cacheLife("days");
   const url = `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(token)}&size=64&format=png&retina=true&fallback=404`;
   try {
-    const res = await fetch(url, { method: "HEAD" });
-    return res.ok ? url : null;
+    // GET, not HEAD: img.logo.dev answers HEAD with 404 even when the logo exists.
+    const res = await fetch(url);
+    await res.body?.cancel();
+    return res.ok && res.headers.get("content-type")?.startsWith("image/") ? url : null;
   } catch {
     return null;
   }
@@ -76,7 +78,8 @@ export async function resolveLogo(q: LogoQuery): Promise<LogoInfo> {
   }
 
   // Publishable token (pk_…); it ends up in the image URL the browser loads, which is how Logo.dev expects it to be used.
-  const token = process.env.LOGO_DEV_TOKEN;
+  // Only publishable tokens: a secret key (sk_…) here would be exposed to every visitor through the image URL.
+  const token = process.env.LOGO_DEV_TOKEN?.startsWith("pk_") ? process.env.LOGO_DEV_TOKEN : undefined;
   if (q.domain && token) {
     tried.push("logo.dev");
     const url = await logoDev(q.domain, token);

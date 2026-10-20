@@ -97,6 +97,11 @@ export function describeError(err: unknown): { status: number; message: string }
   if (err instanceof Anthropic.AuthenticationError)
     return { status: 503, message: "The agent isn't connected: ANTHROPIC_API_KEY in .env is missing or invalid." };
   if (err instanceof Anthropic.RateLimitError) return { status: 429, message: "Too many requests right now. Wait a minute and try again." };
+  // 400s carry a readable reason (e.g. low credit balance) and never echo the key, so pass it through.
+  if (err instanceof Anthropic.BadRequestError) {
+    const reason = (err.error as { error?: { message?: string } } | undefined)?.error?.message;
+    return { status: 400, message: reason ? `The AI service rejected the request: ${reason}` : "The AI service rejected the request." };
+  }
   if (err instanceof Anthropic.APIError) return { status: 502, message: `The AI service returned an error (${err.status ?? "network"}). Try again.` };
   if (err instanceof Error && /api key|apiKey|authentication/i.test(err.message))
     return { status: 503, message: "The agent isn't connected: add ANTHROPIC_API_KEY to .env and restart the server." };
