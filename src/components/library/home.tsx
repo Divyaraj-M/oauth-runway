@@ -96,7 +96,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
     <>
       <section className="flex flex-col items-center gap-8 pt-10 pb-16 text-center md:pt-16">
         <div className="enter flex flex-col items-center gap-5">
-          <h1 className="max-w-3xl text-5xl leading-[1.02] font-semibold tracking-tighter text-balance md:text-7xl">How long until your OAuth app is approved?</h1>
+          <h1 className="max-w-2xl text-3xl leading-tight font-semibold tracking-tight text-balance md:text-5xl">How long until your OAuth app is approved?</h1>
           <p className="max-w-[52ch] text-lg leading-relaxed text-muted-foreground">
             Name an app and what your agent should do in it. You get the difficulty, the work time, the waiting time, and what blocks approval.
           </p>
