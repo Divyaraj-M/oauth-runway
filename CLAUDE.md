@@ -45,6 +45,6 @@ Guides explain AND move the developer forward: the agent should produce things (
 ## Next (in order)
 1. ~~Move to Next.js + real shadcn components; guide data as JSON in `data/guides/`.~~ Done.
 2. ~~API routes with web search.~~ Built; not yet run against the live API (needs a key in `.env`).
-3. Verification pass on Gmail, Aircall, Slack: record what was tested, sourced, corrected, unconfirmed → `VERIFICATION.md`.
-4. README: setup, key decisions, limitations.
+3. ~~Verification pass → `VERIFICATION.md`.~~ Done (Gmail, Slack, Aircall, Notion + 3 live generations).
+4. ~~README: setup, key decisions, limitations.~~ Done.
 5. Deploy (Vercel) and test live generation on 3 unseen apps.

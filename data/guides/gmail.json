@@ -29,7 +29,7 @@
     },
     {
       "case": "Read, modify or full mail access (restricted scopes)",
-      "outcome": "Verification + CASA security assessment, renewed every 12 months",
+      "outcome": "Verification + CASA security assessment, revalidated every year",
       "ev": "sourced"
     }
   ],
@@ -60,8 +60,8 @@
     },
     {
       "who": "you",
-      "title": "Test with up to 100 test users",
-      "detail": "Unverified apps show a warning screen and have a user cap. Fine for building, not for launch.",
+      "title": "Test with up to 100 users while unverified",
+      "detail": "Unverified apps show a warning screen and are limited to 100 new users. Fine for building, not for launch.",
       "ev": "sourced"
     },
     {
@@ -116,6 +116,18 @@
     "Assessment cost depends on the lab and tier"
   ],
   "sources": [
+    {
+      "t": "Google: Gmail API scopes (sensitivity of each scope)",
+      "u": "https://developers.google.com/workspace/gmail/api/auth/scopes"
+    },
+    {
+      "t": "Google: Restricted scope verification and the annual security assessment",
+      "u": "https://support.google.com/cloud/answer/13465431"
+    },
+    {
+      "t": "Google: Unverified apps (100-user cap, when verification isn't needed)",
+      "u": "https://support.google.com/cloud/answer/7454865"
+    },
     {
       "t": "Composio dashboard, Gmail auth config (walked through Oct 2026)",
       "u": "https://dashboard.composio.dev"

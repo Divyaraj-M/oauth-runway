@@ -73,8 +73,8 @@
     {
       "who": "provider",
       "title": "Launch review and in-product publishing",
-      "detail": "Publishing inside Aircall's dashboard is mandatory so admins can uninstall.",
-      "ev": "tested"
+      "detail": "Submit a demo recording, help-center article, logo and screenshots. Aircall reviews them in 1–5 business days and publishes in 3–5. Publishing inside the dashboard is mandatory so admins can uninstall.",
+      "ev": "sourced"
     }
   ],
   "blockers": [
@@ -91,7 +91,7 @@
       "ev": "tested"
     },
     {
-      "text": "Going quiet is also risky: Aircall can decommission assets if you stop replying. They expect completion within 6 months.",
+      "text": "Going quiet is risky: a plan with no reply is discarded after 1 month; during the build Aircall follows up monthly for 2 months, then decommissions your assets a month later. They expect completion within 6 months and a progress update every 2 months.",
       "ev": "sourced"
     },
     {

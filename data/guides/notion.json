@@ -4,7 +4,7 @@
   "app": "Notion",
   "provider": "Notion",
   "difficulty": "self",
-  "verdict": "The easiest of the four. A public integration gives you OAuth credentials as soon as you fill in a few URLs. Sources disagree on whether a security review is needed before publishing.",
+  "verdict": "The easiest of the four to start: a public integration gets OAuth credentials once you fill in a few details. Notion's own docs say the authorization URL appears only after the public connection is submitted for review, and they don't say how long that review takes.",
   "hands_on": {
     "text": "30–60 minutes",
     "days": 0.05
@@ -28,8 +28,8 @@
       "ev": "sourced"
     },
     {
-      "case": "Security review before publishing",
-      "outcome": "Sources conflict; not confirmed",
+      "case": "Review before other workspaces can connect",
+      "outcome": "Notion's docs mention submitting for review; duration and criteria not published",
       "ev": "uncertain"
     }
   ],
@@ -61,8 +61,12 @@
   ],
   "blockers": [
     {
-      "text": "One source says public integrations need a Notion security review; a hands-on write-up got credentials immediately with placeholder URLs.",
-      "ev": "uncertain"
+      "text": "The authorization URL only appears after the public connection is submitted for review (Notion docs). How long that takes isn't stated.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Installation scope (any workspace or selected ones) is set when you create the connection and can't be changed later.",
+      "ev": "sourced"
     },
     {
       "text": "Users choose pages at consent time. Your agent sees nothing the user didn't share.",
@@ -78,7 +82,8 @@
     "Host a privacy policy and terms page"
   ],
   "unverified": [
-    "Whether Notion reviews public integrations before they can be used widely"
+    "How long Notion's review of a public connection takes, and what it checks",
+    "Whether a hands-on report of instant credentials (2023) still matches today's flow"
   ],
   "sources": [
     {

@@ -71,7 +71,7 @@
       "ev": "sourced"
     },
     {
-      "text": "A returned submission loses its place in the queue.",
+      "text": "In the preliminary review, every resubmission resets your place in the queue. Once a reviewer is assigned in the functional review, resubmitting keeps it.",
       "ev": "sourced"
     },
     {
@@ -80,6 +80,10 @@
     },
     {
       "text": "Some scopes are not accepted in the Marketplace at all.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Don't request scopes for features you haven't built yet; Slack rejects them. Legacy and broad scopes (identity.*, admin.*) aren't accepted, and coded workflows can't be listed at all.",
       "ev": "sourced"
     }
   ],
@@ -95,7 +99,7 @@
   ],
   "unverified": [
     "Unlisted public distribution rules were not re-checked this session",
-    "Review durations are maximums from a third-party summary, not averages"
+    "Review durations are Slack's stated maximums, not averages"
   ],
   "sources": [
     {
@@ -103,12 +107,12 @@
       "u": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
     },
     {
-      "t": "WorkOS: OAuth app approval on Slack, Microsoft, Atlassian",
-      "u": "https://workos.com/blog/oauth-app-approval-slack-microsoft-atlassian"
-    },
-    {
       "t": "Slack: Marketplace review FAQ",
       "u": "https://slack.com/blog/news/slack-app-directory-review-process"
+    },
+    {
+      "t": "WorkOS: OAuth app approval on Slack, Microsoft, Atlassian",
+      "u": "https://workos.com/blog/oauth-app-approval-slack-microsoft-atlassian"
     }
   ]
 }
