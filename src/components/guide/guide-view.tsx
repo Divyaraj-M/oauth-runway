@@ -62,6 +62,7 @@ export function GuideView({
   guide: g,
   logo,
   onRemove,
+  onShare,
 }: {
   guide: Guide;
   logo?: LogoInfo;
@@ -69,6 +70,8 @@ export function GuideView({
   research?: GeneratePayload["research"];
   /** Saved drafts only: removes it from the library list. */
   onRemove?: () => void;
+  /** Generated guides: copies a self-contained share link. */
+  onShare?: () => void;
 }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
@@ -326,6 +329,12 @@ export function GuideView({
           <Button size="lg" variant="outline" className="px-4" onClick={() => copy(location.href, "Link copied")}>
             <LinkIcon />
             Copy link
+          </Button>
+        )}
+        {onShare && (
+          <Button size="lg" variant="outline" className="px-4" onClick={onShare}>
+            <LinkIcon />
+            Copy share link
           </Button>
         )}
         {onRemove && (
