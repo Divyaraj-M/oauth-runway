@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LEVEL_CLASS, WHO_LABEL, levelOf } from "@/lib/levels";
+import { chatId } from "@/lib/chats";
 import { toMarkdown } from "@/lib/markdown";
 import type { GeneratePayload, Guide, LogoInfo, Who } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -59,11 +60,11 @@ async function copy(text: string, msg: string) {
 export function GuideView({
   guide: g,
   logo,
-  research,
   onRemove,
 }: {
   guide: Guide;
   logo?: LogoInfo;
+  /** Research log of a generated guide (searches, opened pages); kept with the draft. */
   research?: GeneratePayload["research"];
   /** Saved drafts only: removes it from the library list. */
   onRemove?: () => void;
@@ -116,17 +117,6 @@ export function GuideView({
       </header>
 
       <div {...stagger()} className="enter flex flex-col gap-3 pt-6">
-        {g._generated && (
-          <Alert className="border-l3/40 text-l3">
-            <TriangleAlertIcon />
-            <AlertTitle>Live draft, not checked by a person</AlertTitle>
-            <AlertDescription className="text-l3/90">
-              {research
-                ? `The agent ran ${research.searches.length} web searches and opened ${research.opened.length} pages. A line is Sourced only if it links to a page it opened${research.downgraded ? `; ${research.downgraded} claims it couldn't back were set to Unverified` : ""}. Check the sources before you rely on any line.`
-                : "The agent wrote this without a research log. Open the sources before you rely on any line."}
-            </AlertDescription>
-          </Alert>
-        )}
         <Alert role="note">
           <ShieldIcon />
           <AlertTitle>No credentials needed here</AlertTitle>
@@ -378,7 +368,7 @@ export function GuideView({
         Ask agent
       </Button>
 
-      <ChatSheet guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} />
+      <ChatSheet key={chatId(g)} guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} />
     </>
   );
 }
