@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import type React from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -66,6 +67,9 @@ export function GuideView({
   onRemove,
   onShare,
   guideId,
+  statusBadge,
+  notice,
+  actions,
 }: {
   guide: Guide;
   logo?: LogoInfo;
@@ -77,6 +81,10 @@ export function GuideView({
   onShare?: () => void;
   /** Database id of a saved generated guide; names its chat ("g:<id>"). */
   guideId?: string;
+  /** Review flow (saved generated guides): replaces the "Live draft" badge, adds a notice and actions. */
+  statusBadge?: React.ReactNode;
+  notice?: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
@@ -117,9 +125,11 @@ export function GuideView({
       <header {...stagger()} className="enter grid grid-cols-1 gap-6 pt-4 md:grid-cols-[1fr_300px] md:items-start">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className={tag}>
-              {g._generated ? "Live draft" : "Reviewed by hand"}
-            </Badge>
+            {statusBadge ?? (
+              <Badge variant="secondary" className={tag}>
+                {g._generated ? "Live draft" : "Reviewed by hand"}
+              </Badge>
+            )}
             <Freshness g={g} pagesRead={research?.opened.length} />
           </div>
           <div className="flex items-center gap-3">
@@ -176,6 +186,12 @@ export function GuideView({
           </div>
         </Card>
       </header>
+
+      {notice && (
+        <div {...stagger()} className="enter mt-6">
+          {notice}
+        </div>
+      )}
 
       <Alert role="note" {...stagger()} className={cn("enter mt-6", lc.note)}>
         <ClockIcon className={lc.text} />
@@ -357,6 +373,7 @@ export function GuideView({
       </Tabs>
 
       <div {...stagger()} className="enter flex flex-wrap items-center gap-2 pt-8">
+        {actions}
         <Button size="lg" className="px-4" onClick={() => openChat()}>
           <MessageCircleIcon />
           Ask the agent

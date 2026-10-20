@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { approveFromQueue, sendBackFromQueue } from "@/app/g/actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,7 +29,7 @@ const when = (v: unknown) =>
 async function Admin() {
   // Not an admin (or signed out): look exactly like a missing page.
   if (!isAdmin(await currentUser())) notFound();
-  const { counts, events, guides, users } = await adminOverview();
+  const { counts, events, guides, users, pending } = await adminOverview();
   const stats = [
     ["Users", counts.users],
     ["Guides generated", counts.guides],
@@ -52,7 +54,50 @@ async function Admin() {
         ))}
       </div>
 
-      <Section title="Recent activity" description="Generations, agent questions and key checks, newest first.">
+      <Section title={`Review queue · ${pending.length}`} description="Published guides waiting for your approval, oldest first. Approved guides show “Approved by” you.">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>App</TableHead>
+              <TableHead>Level</TableHead>
+              <TableHead>By</TableHead>
+              <TableHead>Published</TableHead>
+              <TableHead className="text-right">Review</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pending.map((g) => (
+              <TableRow key={g.id as string}>
+                <TableCell>
+                  <Link href={`/g/${g.id}`} className="underline underline-offset-2">
+                    {g.app as string}
+                  </Link>
+                </TableCell>
+                <TableCell>L{levelOf(g.difficulty as string).n}</TableCell>
+                <TableCell>{(g.email as string) ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{when(g.published_at)}</TableCell>
+                <TableCell className="text-right">
+                  <div className="inline-flex gap-2">
+                    <form action={approveFromQueue.bind(null, g.id as string)}>
+                      <Button type="submit" size="sm">
+                        Approve
+                      </Button>
+                    </form>
+                    <form action={sendBackFromQueue.bind(null, g.id as string)}>
+                      <Button type="submit" size="sm" variant="outline">
+                        Send back
+                      </Button>
+                    </form>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {!pending.length && <Empty cols={5} />}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section title="Recent activity" description="Generations, agent questions, key checks, publishing and reviews, newest first.">
         <Table>
           <TableHeader>
             <TableRow>
@@ -91,6 +136,7 @@ async function Admin() {
             <TableRow>
               <TableHead>App</TableHead>
               <TableHead>Level</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>By</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>When</TableHead>
@@ -105,12 +151,17 @@ async function Admin() {
                   </Link>
                 </TableCell>
                 <TableCell>L{levelOf(g.difficulty as string).n}</TableCell>
+                <TableCell>
+                  <Badge variant={g.status === "approved" ? "default" : g.status === "published" ? "outline" : "secondary"}>
+                    {g.status === "published" ? "pending" : (g.status as string)}
+                  </Badge>
+                </TableCell>
                 <TableCell>{(g.email as string) ?? "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{g.model as string}</TableCell>
                 <TableCell className="text-muted-foreground">{when(g.created_at)}</TableCell>
               </TableRow>
             ))}
-            {!guides.length && <Empty cols={5} />}
+            {!guides.length && <Empty cols={6} />}
           </TableBody>
         </Table>
       </Section>

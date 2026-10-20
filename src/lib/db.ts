@@ -9,6 +9,10 @@ const sql = () => (client ??= neon(process.env.DATABASE_URL!));
 
 export const GUIDES_TAG = "guides";
 
+/** draft (author only) → published (public, pending approval) → approved (by an admin). */
+export type GuideStatus = "draft" | "published" | "approved";
+export type Review = { status: GuideStatus; ownerId: string | null; approvedBy: string | null; approvedAt: string | null };
+
 /** URL-safe share id, e.g. "k3Vt9QxA2m". */
 export function newGuideId() {
   const abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -22,14 +26,43 @@ export async function insertGuide(row: { id: string; slug: string; query: string
 }
 
 /** One generated guide. Guides never change after insert, so cache for as long as possible. */
-export async function getGuide(id: string): Promise<(GeneratePayload & { createdAt: string; author: string | null }) | null> {
+export async function getGuide(id: string): Promise<(GeneratePayload & { createdAt: string; author: string | null; review: Review }) | null> {
   "use cache";
   cacheLife("max");
   cacheTag(`guide-${id}`);
-  const rows = (await sql()`select g.payload, g.created_at, u.name as author
-    from guides g left join neon_auth."user" u on u.id = g.user_id where g.id = ${id}`) as { payload: GeneratePayload; created_at: string; author: string | null }[];
+  const rows = (await sql()`select g.payload, g.created_at, g.status, g.user_id, g.approved_at, u.name as author,
+      nullif(a.name, '') as approver
+    from guides g left join neon_auth."user" u on u.id = g.user_id left join neon_auth."user" a on a.id = g.approved_by
+    where g.id = ${id}`) as Record<string, unknown>[];
   const r = rows[0];
-  return r ? { ...r.payload, createdAt: new Date(r.created_at).toISOString(), author: r.author } : null;
+  if (!r) return null;
+  return {
+    ...(r.payload as GeneratePayload),
+    createdAt: new Date(r.created_at as string).toISOString(),
+    author: (r.author as string) ?? null,
+    review: {
+      status: r.status as GuideStatus,
+      ownerId: (r.user_id as string) ?? null,
+      approvedBy: (r.approver as string) ?? null,
+      approvedAt: r.approved_at ? new Date(r.approved_at as string).toISOString() : null,
+    },
+  };
+}
+
+/* The approver's name is public on approved guides, so only their display name is used, never their email. */
+
+/** Moves a guide through the review flow. Returns false when the guide isn't in the expected state (or isn't the caller's). */
+export async function setGuideStatus(
+  id: string,
+  change: { to: "published"; ownerId: string } | { to: "approved"; adminId: string } | { to: "draft"; adminId: string },
+) {
+  const rows =
+    change.to === "published"
+      ? await sql()`update guides set status = 'published', published_at = now() where id = ${id} and user_id = ${change.ownerId} and status = 'draft' returning id`
+      : change.to === "approved"
+        ? await sql()`update guides set status = 'approved', approved_at = now(), approved_by = ${change.adminId} where id = ${id} and status = 'published' returning id`
+        : await sql()`update guides set status = 'draft', published_at = null, approved_at = null, approved_by = null where id = ${id} and status in ('published', 'approved') returning id`;
+  return (rows as unknown[]).length > 0;
 }
 
 export type DraftSummary = {
@@ -41,6 +74,7 @@ export type DraftSummary = {
   work: string;
   wait: string;
   logo: LogoInfo | null;
+  status: GuideStatus;
   createdAt: string;
 };
 
@@ -54,6 +88,7 @@ const summaryCols = (rows: Record<string, unknown>[]): DraftSummary[] =>
     work: (r.work as string) ?? "Unknown",
     wait: (r.wait as string) ?? "Unknown",
     logo: (r.logo as LogoInfo) ?? null,
+    status: (r.status as GuideStatus) ?? "draft",
     createdAt: new Date(r.created_at as string).toISOString(),
   }));
 
@@ -63,16 +98,18 @@ export async function latestDrafts(): Promise<DraftSummary[]> {
   cacheLife("hours");
   cacheTag(GUIDES_TAG);
   if (!process.env.DATABASE_URL) return [];
-  const rows = (await sql()`select distinct on (slug) id, slug, app, difficulty, created_at,
+  // Drafts are private, so the library shows published guides only; an approved one beats a newer pending one.
+  const rows = (await sql()`select distinct on (slug) id, slug, app, difficulty, status, created_at,
       payload->'guide'->>'verdict' as verdict, payload->'guide'->'hands_on'->>'text' as work,
       payload->'guide'->'waiting'->>'normal' as wait, payload->'logo' as logo
-    from guides order by slug, created_at desc limit 300`) as Record<string, unknown>[];
+    from guides where status in ('published', 'approved')
+    order by slug, (status = 'approved') desc, created_at desc limit 300`) as Record<string, unknown>[];
   return summaryCols(rows);
 }
 
 /** A user's own guides, newest first (not cached: per user). */
 export async function userGuides(userId: string, limit = 6): Promise<DraftSummary[]> {
-  const rows = (await sql()`select id, slug, app, difficulty, created_at,
+  const rows = (await sql()`select id, slug, app, difficulty, status, created_at,
       payload->'guide'->>'verdict' as verdict, payload->'guide'->'hands_on'->>'text' as work,
       payload->'guide'->'waiting'->>'normal' as wait, payload->'logo' as logo
     from guides where user_id = ${userId} order by created_at desc limit ${limit}`) as Record<string, unknown>[];
@@ -80,7 +117,7 @@ export async function userGuides(userId: string, limit = 6): Promise<DraftSummar
 }
 
 /** Usage log; never throws (logging must not break a request). */
-export async function logEvent(e: { userId: string | null; kind: "generate" | "ask" | "key_check"; app?: string; ok: boolean; ms?: number; detail?: unknown }) {
+export async function logEvent(e: { userId: string | null; kind: "generate" | "ask" | "key_check" | "publish" | "approve" | "send_back"; app?: string; ok: boolean; ms?: number; detail?: unknown }) {
   try {
     await sql()`insert into events (user_id, kind, app, ok, ms, detail)
       values (${e.userId}, ${e.kind}, ${e.app ?? null}, ${e.ok}, ${e.ms ?? null}, ${e.detail === undefined ? null : JSON.stringify(e.detail)}::jsonb)`;
@@ -121,13 +158,15 @@ export async function adminOverview() {
       (select count(*) from events where kind = 'ask')::int as questions`) as Record<string, number>[];
   const events = (await sql()`select e.created_at, e.kind, e.app, e.ok, e.ms, e.detail, u.email
     from events e left join neon_auth."user" u on u.id = e.user_id order by e.created_at desc limit 100`) as Record<string, unknown>[];
-  const guides = (await sql()`select g.id, g.app, g.difficulty, g.model, g.created_at, u.email
+  const guides = (await sql()`select g.id, g.app, g.difficulty, g.model, g.status, g.created_at, u.email
     from guides g left join neon_auth."user" u on u.id = g.user_id order by g.created_at desc limit 100`) as Record<string, unknown>[];
+  const pending = (await sql()`select g.id, g.app, g.difficulty, g.published_at, u.email
+    from guides g left join neon_auth."user" u on u.id = g.user_id where g.status = 'published' order by g.published_at asc limit 100`) as Record<string, unknown>[];
   const users = (await sql()`select u.email, u.name, u."createdAt" as created_at,
       (select count(*) from guides g where g.user_id = u.id)::int as guides,
       (select max(created_at) from events e where e.user_id = u.id) as last_seen
     from neon_auth."user" u order by u."createdAt" desc limit 100`) as Record<string, unknown>[];
-  return { counts, events, guides, users };
+  return { counts, events, guides, users, pending };
 }
 
 /* ---------- AI provider settings (key encrypted; see secret-box.ts) ---------- */

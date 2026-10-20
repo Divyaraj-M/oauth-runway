@@ -122,7 +122,7 @@ export function Home({
       setGen({ kind: "idle" });
       setQ("");
       if (visible.current) router.push(href);
-      else toast(`${payload.guide.app} guide is ready`, { description: "Saved to the library.", action: { label: "Open", onClick: () => router.push(href) } });
+      else toast(`${payload.guide.app} guide is ready`, { description: "Saved as a draft. Publish it when it looks right.", action: { label: "Open", onClick: () => router.push(href) } });
     } catch (err) {
       if (ctrl.signal.aborted) return setGen({ kind: "idle" });
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
@@ -242,6 +242,9 @@ function RecentGuides({ guides }: { guides: DraftSummary[] }) {
                 <ItemContent className="min-w-0 gap-0.5">
                   <ItemTitle className="w-full">
                     <span className="truncate">{d.app}</span>
+                    <Badge variant={d.status === "draft" ? "secondary" : "outline"} className="rounded-md px-1.5 text-[10px]">
+                      {d.status === "draft" ? "Draft" : d.status === "approved" ? "Approved" : "Pending"}
+                    </Badge>
                     <span className={cn("ml-auto shrink-0 text-xs font-medium", LEVEL_CLASS[l.n].text)}>L{l.n}</span>
                   </ItemTitle>
                   <ItemDescription className="truncate text-xs">
@@ -376,7 +379,7 @@ function Library({
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold tracking-tight">Apps</h2>
-          <p className="text-sm text-muted-foreground">Reviewed guides show their level. Drafts are AI-researched guides anyone signed in has generated.</p>
+          <p className="text-sm text-muted-foreground">Reviewed guides show their level. Community guides are AI-researched, published by their authors, and approved by a reviewer.</p>
         </div>
         <p className="tnum hidden shrink-0 font-mono text-xs text-muted-foreground sm:block">
           {rows.length}/{entries.length} · {Object.keys(guides).length} reviewed{draftCount ? ` · ${draftCount} draft${draftCount > 1 ? "s" : ""}` : ""}
@@ -502,9 +505,15 @@ function DraftRow({ c, d, logo }: { c: CatalogEntry; d: DraftSummary; logo?: Log
           <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
             <ItemTitle>
               {c.app}
-              <Badge variant="secondary" className="rounded-md px-1.5 text-[11px]">
-                Draft
-              </Badge>
+              {d.status === "approved" ? (
+                <Badge variant="outline" className="rounded-md border-l1/30 bg-l1/10 px-1.5 text-[11px] text-l1">
+                  Approved
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="rounded-md border-l3/30 bg-l3/10 px-1.5 text-[11px] text-l3">
+                  Pending approval
+                </Badge>
+              )}
             </ItemTitle>
             <div className="flex items-center gap-2">
               <div className="w-14 shrink-0">
@@ -522,7 +531,9 @@ function DraftRow({ c, d, logo }: { c: CatalogEntry; d: DraftSummary; logo?: Log
                 <ClockIcon className="size-3.5" />
                 Work {d.work} · Wait {d.wait}
               </span>
-              <span>Generated {fmtDate(d.createdAt.slice(0, 10))} · not reviewed</span>
+              <span>
+                Generated {fmtDate(d.createdAt.slice(0, 10))} · {d.status === "approved" ? "reviewed" : "not reviewed yet"}
+              </span>
             </div>
           </div>
         </ItemContent>

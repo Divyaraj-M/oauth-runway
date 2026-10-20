@@ -49,3 +49,10 @@ create table if not exists user_settings (
   key_last4 text not null,
   updated_at timestamptz not null default now()
 );
+
+-- Review flow: draft (author only) → published (public, pending approval) → approved (by an admin).
+alter table guides add column if not exists status text not null default 'draft';
+alter table guides add column if not exists published_at timestamptz;
+alter table guides add column if not exists approved_at timestamptz;
+alter table guides add column if not exists approved_by uuid;
+create index if not exists guides_status_created on guides (status, created_at desc);
