@@ -46,11 +46,7 @@ export function ChatSheet({
     setDraft("");
     setBusy(true);
 
-    const trace: TraceStep[] = [
-      { t: `Read the ${g.app} guide: ${g.steps.length} steps, ${g.blockers.length} blockers`, done: false },
-      { t: `Checked the ${g.sources.length} sources the guide cites`, done: false },
-      { t: "Drafted an answer (model knowledge, no live web search)", done: false },
-    ];
+    const trace: TraceStep[] = [{ t: `Read the ${g.app} guide: ${g.steps.length} steps, ${g.blockers.length} blockers`, done: true }];
     // Messages sent to the model: drop failed turns and the user message that caused them.
     const sendable: ChatMessage[] = [];
     for (const m of hist) {
@@ -62,25 +58,22 @@ export function ChatSheet({
     }
     sendable.push({ role: "user", content: q });
 
-    const update = (patch: Partial<Msg>) =>
-      setHist((h) => [...h.slice(0, -1), { ...h[h.length - 1], ...patch }]);
+    // The reply is always the last message; patch it as events stream in.
+    const update = (patch: (m: Msg) => Partial<Msg>) => setHist((h) => [...h.slice(0, -1), { ...h[h.length - 1], ...patch(h[h.length - 1]) }]);
+    // Each real search or page fetch becomes a trace step; earlier steps are marked done as new ones arrive.
+    const addStep = (t: string) => update((m) => ({ trace: [...(m.trace ?? []).map((x) => ({ ...x, done: true })), { t, done: false }] }));
     setHist((h) => [...h, { role: "user", content: q }, { role: "assistant", content: "", trace, pending: true }]);
 
-    // Cosmetic progress: tick off all but the last trace step while the answer streams.
-    let ticks = 0;
-    const tick = setInterval(() => {
-      if (ticks >= trace.length - 1) return;
-      ticks++;
-      update({ trace: trace.map((s, i) => ({ ...s, done: i < ticks })) });
-    }, 700);
     try {
-      const text = await askAgent(g, sendable, (soFar) => update({ content: soFar }));
-      update({ content: text });
+      await askAgent(g, sendable, (e) => {
+        if (e.type === "search") addStep(`Searched “${e.query}”`);
+        if (e.type === "fetch") addStep(`Opened ${e.url.replace(/^https?:\/\//, "")}`);
+        if (e.type === "text") update((m) => ({ content: m.content + e.delta }));
+      });
     } catch (err) {
-      update({ error: true, content: err instanceof Error ? err.message : "Something went wrong. Ask again." });
+      update(() => ({ error: true, content: err instanceof Error ? err.message : "Something went wrong. Ask again." }));
     } finally {
-      clearInterval(tick);
-      update({ pending: false, trace: trace.map((s) => ({ ...s, done: true })) });
+      update((m) => ({ pending: false, trace: (m.trace ?? []).map((x) => ({ ...x, done: true })) }));
       setBusy(false);
     }
   }
@@ -99,7 +92,7 @@ export function ChatSheet({
             <BotIcon className="size-4" />
             Integration agent
           </SheetTitle>
-          <SheetDescription>Ask about {g.app} while you set it up. It answers from this guide and says when it isn&apos;t sure.</SheetDescription>
+          <SheetDescription>Ask about {g.app} while you set it up. It reads this guide, searches the web for what the guide doesn&apos;t cover, and says when it isn&apos;t sure.</SheetDescription>
         </SheetHeader>
 
         <div ref={box} className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">

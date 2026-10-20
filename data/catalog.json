@@ -3,120 +3,140 @@
     "key": "gmail",
     "app": "Gmail",
     "provider": "Google",
-    "cat": "Email"
+    "cat": "Email",
+    "domain": "gmail.com"
   },
   {
     "key": "aircall",
     "app": "Aircall",
     "provider": "Aircall",
-    "cat": "Calling"
+    "cat": "Calling",
+    "domain": "aircall.io"
   },
   {
     "key": "slack",
     "app": "Slack",
     "provider": "Slack",
-    "cat": "Messaging"
+    "cat": "Messaging",
+    "domain": "slack.com"
   },
   {
     "key": "notion",
     "app": "Notion",
     "provider": "Notion",
-    "cat": "Docs"
+    "cat": "Docs",
+    "domain": "notion.so"
   },
   {
     "key": "linear",
     "app": "Linear",
     "provider": "Linear",
-    "cat": "Issue tracking"
+    "cat": "Issue tracking",
+    "domain": "linear.app"
   },
   {
     "key": "jira",
     "app": "Jira",
     "provider": "Atlassian",
-    "cat": "Issue tracking"
+    "cat": "Issue tracking",
+    "domain": "atlassian.com"
   },
   {
     "key": "confluence",
     "app": "Confluence",
     "provider": "Atlassian",
-    "cat": "Docs"
+    "cat": "Docs",
+    "domain": "atlassian.com"
   },
   {
     "key": "github",
     "app": "GitHub",
     "provider": "GitHub",
-    "cat": "Code"
+    "cat": "Code",
+    "domain": "github.com"
   },
   {
     "key": "hubspot",
     "app": "HubSpot",
     "provider": "HubSpot",
-    "cat": "CRM"
+    "cat": "CRM",
+    "domain": "hubspot.com"
   },
   {
     "key": "salesforce",
     "app": "Salesforce",
     "provider": "Salesforce",
-    "cat": "CRM"
+    "cat": "CRM",
+    "domain": "salesforce.com"
   },
   {
     "key": "zoom",
     "app": "Zoom",
     "provider": "Zoom",
-    "cat": "Meetings"
+    "cat": "Meetings",
+    "domain": "zoom.us"
   },
   {
     "key": "calendly",
     "app": "Calendly",
     "provider": "Calendly",
-    "cat": "Scheduling"
+    "cat": "Scheduling",
+    "domain": "calendly.com"
   },
   {
     "key": "googlecalendar",
     "app": "Google Calendar",
     "provider": "Google",
-    "cat": "Calendar"
+    "cat": "Calendar",
+    "domain": "calendar.google.com"
   },
   {
     "key": "googledrive",
     "app": "Google Drive",
     "provider": "Google",
-    "cat": "Files"
+    "cat": "Files",
+    "domain": "drive.google.com"
   },
   {
     "key": "outlook",
     "app": "Outlook",
     "provider": "Microsoft",
-    "cat": "Email"
+    "cat": "Email",
+    "domain": "outlook.com"
   },
   {
     "key": "teams",
     "app": "Microsoft Teams",
     "provider": "Microsoft",
-    "cat": "Messaging"
+    "cat": "Messaging",
+    "domain": "teams.microsoft.com"
   },
   {
     "key": "asana",
     "app": "Asana",
     "provider": "Asana",
-    "cat": "Projects"
+    "cat": "Projects",
+    "domain": "asana.com"
   },
   {
     "key": "zendesk",
     "app": "Zendesk",
     "provider": "Zendesk",
-    "cat": "Support"
+    "cat": "Support",
+    "domain": "zendesk.com"
   },
   {
     "key": "dropbox",
     "app": "Dropbox",
     "provider": "Dropbox",
-    "cat": "Files"
+    "cat": "Files",
+    "domain": "dropbox.com"
   },
   {
     "key": "airtable",
     "app": "Airtable",
     "provider": "Airtable",
-    "cat": "Database"
+    "cat": "Database",
+    "domain": "airtable.com"
   }
 ]

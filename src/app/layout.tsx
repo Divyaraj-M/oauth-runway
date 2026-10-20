@@ -37,6 +37,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Badge>
             </header>
             <main className="pt-8">{children}</main>
+            <footer className="pt-16 text-xs text-muted-foreground">
+              Logos from{" "}
+              <a href="https://svgl.app" className="underline underline-offset-2 hover:text-foreground">SVGL</a>,{" "}
+              <a href="https://www.brandbird.app/tools/svg-company-logos" className="underline underline-offset-2 hover:text-foreground">BrandBird</a> and{" "}
+              <a href="https://logo.dev" className="underline underline-offset-2 hover:text-foreground">Logo.dev</a>. Trademarks belong to their owners.
+            </footer>
           </div>
           <Toaster position="bottom-right" />
         </TooltipProvider>

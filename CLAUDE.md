@@ -24,14 +24,15 @@ Guides explain AND move the developer forward: the agent should produce things (
 - Every claim carries an evidence label: Tested (done first-hand), Sourced (links a page actually read), Unverified. A generated guide can never be Tested.
 - No credentials anywhere: not in the repo, the guides, or the chat. The chat and search box block key-like input. API keys live in `.env`, never committed; ship `.env.example`.
 - Never invent precise review durations. Use ranges and list unknowns.
-- Brand logos: SVGs come from svgl.app via the `@svgl` shadcn registry (`npx shadcn add @svgl/<name>`), used under each brand's terms, mapped in `src/components/guide/logos.tsx`. The letter tile stays as fallback (Aircall, Jira, Confluence, HubSpot, Zendesk, Airtable have no SVGL entry).
+- Brand logos: from SVGL, BrandBird and Logo.dev (see Current state), used under each brand's terms with attribution in the footer. The letter tile is always the last fallback.
 
 ## Current state
 - Next.js 16 (App Router, Turbopack, Cache Components) + Tailwind v4 + shadcn/ui (radix-nova, zinc tokens carried over from the prototype). Next 16 has breaking changes: read `node_modules/next/dist/docs/` before touching framework APIs (see AGENTS.md).
 - Routes: `/` library + live generation, `/guides/[key]` (static, from `data/guides/*.json`), `/draft` (live draft kept in sessionStorage only). Old `/#gmail` links redirect.
 - Guide data: `data/guides/<key>.json` (register new files in `src/lib/guides.ts`), app list in `data/catalog.json`.
-- Agent seam: `src/lib/agent-client.ts` streams plain text from `POST /api/agent` (`{guide, messages}`) and `POST /api/generate` (`{query}`, returns guide JSON). **Neither route exists yet**; the UI shows "agent isn't connected" until step 2.
-- The agent has no web search yet.
+- Agent: `POST /api/generate` (`{query}`) and `POST /api/agent` (`{guide, messages}`) call Claude Opus 5.5 with server-side web search + web fetch (`src/lib/research.ts`), key from `ANTHROPIC_API_KEY` in `.env`. Both stream NDJSON: `search` / `fetch` / `text` events, then `done` or `error`. Generate's `done.payload` is `{guide, logo, research}`.
+- Evidence is enforced server-side in the generate route: "sourced" survives only if the claim's `src` is a page the model actually opened (web_fetch); sources not opened are dropped; "tested" is never allowed.
+- Logos: server-side waterfall in `src/lib/logos.ts` (bundled SVGL → SVGL API → BrandBird file probe → Logo.dev by `domain` if `LOGO_DEV_TOKEN` is set → letter tile), cached for a day. New catalog entries in `data/catalog.json` (with `domain`) pick up logos with no code change.
 - `prototype/index.html` is the v3 single-file prototype, kept for reference only (it relied on `window.claude.use`, which only exists in claude.ai artifacts).
 - Spec doc (requirements, metrics, open questions) lives in claude.ai as "OAuth Runway — Feature Spec".
 
@@ -42,7 +43,7 @@ Guides explain AND move the developer forward: the agent should produce things (
 
 ## Next (in order)
 1. ~~Move to Next.js + real shadcn components; guide data as JSON in `data/guides/`.~~ Done.
-2. Add an API route for the agent that calls the Anthropic API with a web search tool, so Sourced claims cite pages actually opened. Key from `ANTHROPIC_API_KEY` in `.env`.
+2. ~~API routes with web search.~~ Built; not yet run against the live API (needs a key in `.env`).
 3. Verification pass on Gmail, Aircall, Slack: record what was tested, sourced, corrected, unconfirmed → `VERIFICATION.md`.
 4. README: setup, key decisions, limitations.
 5. Deploy (Vercel) and test live generation on 3 unseen apps.

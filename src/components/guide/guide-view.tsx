@@ -25,10 +25,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LEVEL_CLASS, WHO_LABEL, levelOf } from "@/lib/levels";
 import { toMarkdown } from "@/lib/markdown";
-import type { Guide, Who } from "@/lib/types";
+import type { GeneratePayload, Guide, LogoInfo, Who } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-import { AppTile, EvidenceBadge, Freshness, LevelBadge, LevelMeter, tag } from "./bits";
+import { AppLogo } from "./app-logo";
+import { EvidenceBadge, Freshness, LevelBadge, LevelMeter, tag } from "./bits";
 import { ChatSheet } from "./chat-sheet";
 
 const WHO_CLASS: Record<Who, string> = {
@@ -54,7 +55,7 @@ async function copy(text: string, msg: string) {
   }
 }
 
-export function GuideView({ guide: g }: { guide: Guide }) {
+export function GuideView({ guide: g, logo, research }: { guide: Guide; logo?: LogoInfo; research?: GeneratePayload["research"] }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
   const total = (g.hands_on.days || 0) + (g.waiting.days || 0);
@@ -90,7 +91,7 @@ export function GuideView({ guide: g }: { guide: Guide }) {
           <Freshness g={g} />
         </div>
         <div className="flex items-center gap-3">
-          <AppTile appKey={g.key} name={g.app} />
+          <AppLogo name={g.app} logo={logo} />
           <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
         </div>
         <p className="max-w-2xl text-muted-foreground">{g.verdict}</p>
@@ -102,7 +103,9 @@ export function GuideView({ guide: g }: { guide: Guide }) {
             <TriangleAlertIcon />
             <AlertTitle>Live draft, not checked by a person</AlertTitle>
             <AlertDescription className="text-l3/90">
-              The agent wrote this from its own knowledge, without live web search. Open the sources before you rely on any line.
+              {research
+                ? `The agent ran ${research.searches.length} web searches and opened ${research.opened.length} pages. A line is Sourced only if it links to a page it opened${research.downgraded ? `; ${research.downgraded} claims it couldn't back were set to Unverified` : ""}. Check the sources before you rely on any line.`
+                : "The agent wrote this without a research log. Open the sources before you rely on any line."}
             </AlertDescription>
           </Alert>
         )}
@@ -196,7 +199,7 @@ export function GuideView({ guide: g }: { guide: Guide }) {
                       <Badge variant="outline" className={cn(tag, WHO_CLASS[s.who] ?? WHO_CLASS.you)}>
                         {WHO_LABEL[s.who] ?? "You"}
                       </Badge>
-                      <EvidenceBadge ev={s.ev} />
+                      <EvidenceBadge ev={s.ev} src={s.src} />
                     </div>
                     <p className="text-sm text-muted-foreground">{s.detail}</p>
                   </div>
@@ -231,7 +234,7 @@ export function GuideView({ guide: g }: { guide: Guide }) {
                     <TableCell className="p-4 align-top whitespace-normal">{c.case}</TableCell>
                     <TableCell className="p-4 align-top whitespace-normal text-muted-foreground">{c.outcome}</TableCell>
                     <TableCell className="p-4 text-right align-top">
-                      <EvidenceBadge ev={c.ev} />
+                      <EvidenceBadge ev={c.ev} src={c.src} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -246,7 +249,7 @@ export function GuideView({ guide: g }: { guide: Guide }) {
               <TriangleAlertIcon className="text-l3!" />
               <div className="col-start-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <span>{b.text}</span>
-                <EvidenceBadge ev={b.ev} />
+                <EvidenceBadge ev={b.ev} src={b.src} />
               </div>
             </Alert>
           ))}

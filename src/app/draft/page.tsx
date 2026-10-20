@@ -5,19 +5,20 @@ import { useSyncExternalStore } from "react";
 
 import { GuideView } from "@/components/guide/guide-view";
 import { Button } from "@/components/ui/button";
-import { loadDraft } from "@/lib/agent-client";
+import { type Draft, loadDraft } from "@/lib/agent-client";
 
-// The live draft lives in sessionStorage only: it is never shareable by link, only as Markdown.
-// Returned as a string so the snapshot compares by value; undefined on the server.
+// The live draft (guide + logo + research log from /api/generate) lives in sessionStorage only:
+// it is never shareable by link, only as Markdown. Read as a string so the snapshot compares by value.
 const read = () => {
-  const g = loadDraft();
-  return g ? JSON.stringify(g) : null;
+  const d = loadDraft();
+  return d ? JSON.stringify(d) : null;
 };
 
 export default function DraftPage() {
   const raw = useSyncExternalStore(() => () => {}, read, () => undefined);
   if (raw === undefined) return null;
-  if (!raw)
+  const d: Draft | null = raw ? JSON.parse(raw) : null;
+  if (!d?.guide)
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <h1 className="text-xl font-semibold tracking-tight">No live draft here</h1>
@@ -27,5 +28,5 @@ export default function DraftPage() {
         </Button>
       </div>
     );
-  return <GuideView guide={JSON.parse(raw)} />;
+  return <GuideView guide={d.guide} logo={d.logo} research={d.research} />;
 }

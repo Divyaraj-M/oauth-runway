@@ -6,8 +6,6 @@ import { EVIDENCE_LABEL, LEVELS, LEVEL_CLASS, fmtDate } from "@/lib/levels";
 import type { Evidence, Guide } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-import { LOGOS } from "./logos";
-
 const EV_CLASS: Record<Evidence, string> = {
   tested: LEVEL_CLASS[1].badge,
   sourced: LEVEL_CLASS[2].badge,
@@ -17,8 +15,17 @@ const EV_CLASS: Record<Evidence, string> = {
 /** Square-cornered badge to match the prototype's shadcn new-york look. */
 export const tag = "rounded-md px-2.5 font-semibold";
 
-export function EvidenceBadge({ ev }: { ev: Evidence }) {
+/** `src` (generated guides) is the page the agent opened for this claim; the badge links to it. */
+export function EvidenceBadge({ ev, src }: { ev: Evidence; src?: string }) {
   const k: Evidence = EVIDENCE_LABEL[ev] ? ev : "uncertain";
+  if (src && k === "sourced")
+    return (
+      <Badge asChild variant="outline" className={cn(tag, EV_CLASS[k], "hover:underline")}>
+        <a href={src} target="_blank" rel="noopener noreferrer" title={src}>
+          {EVIDENCE_LABEL[k]}
+        </a>
+      </Badge>
+    );
   return (
     <Badge variant="outline" className={cn(tag, EV_CLASS[k])}>
       {EVIDENCE_LABEL[k]}
@@ -42,28 +49,6 @@ export function LevelBadge({ n }: { n: 1 | 2 | 3 | 4 }) {
     <Badge variant="outline" className={cn(tag, LEVEL_CLASS[n].badge)}>
       Level {n} · {LEVELS[n - 1].name}
     </Badge>
-  );
-}
-
-/** Brand logo from LOGOS when we have one; otherwise the letter tile. */
-export function AppTile({ appKey, name }: { appKey?: string; name: string }) {
-  const Logo = appKey ? LOGOS[appKey] : undefined;
-  if (Logo)
-    return (
-      <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-md border bg-muted">
-        <Logo className="size-5" />
-      </span>
-    );
-  const letters = name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  return (
-    <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-md border bg-muted text-sm font-semibold text-foreground">
-      {letters}
-    </span>
   );
 }
 

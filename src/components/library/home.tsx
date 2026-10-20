@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { AppTile, LevelMeter, tag } from "@/components/guide/bits";
+import { AppLogo } from "@/components/guide/app-logo";
+import { LevelMeter, tag } from "@/components/guide/bits";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateGuide, saveDraft } from "@/lib/agent-client";
+import { type AgentEvent, generateGuide, saveDraft } from "@/lib/agent-client";
 import { LEVELS, LEVEL_CLASS, fmtDate, levelOf } from "@/lib/levels";
 import { looksLikeSecret } from "@/lib/secrets";
-import type { CatalogEntry, Guide } from "@/lib/types";
+import type { CatalogEntry, Guide, LogoInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { NewAppDialog } from "./new-app-dialog";
@@ -27,15 +28,6 @@ const TRY = [
   ["Zoom", "Zoom: create meetings and pull transcripts for my customers"],
   ["Linear", "Linear: create and update issues for my customers"],
 ] as const;
-
-const STAGES = [
-  "Finding the developer portal",
-  "Checking how OAuth apps are created",
-  "Looking for review and partner gates",
-  "Mapping your features to permissions",
-  "Estimating work vs waiting",
-  "Writing the guide",
-];
 
 /** 0 = all, 1–4 = level, 5 = not rated */
 const FILTERS = [
@@ -47,9 +39,11 @@ const FILTERS = [
   [5, "Not rated"],
 ] as const;
 
-type GenState = { kind: "idle" } | { kind: "running"; stage: number; chars: number } | { kind: "error"; title: string; message: string };
+/** One line of live research activity, straight from the server's web search / fetch events. */
+type Step = { kind: "search" | "fetch"; text: string };
+type GenState = { kind: "idle" } | { kind: "running"; steps: Step[]; chars: number } | { kind: "error"; title: string; message: string };
 
-export function Home({ guides, catalog }: { guides: Record<string, Guide>; catalog: CatalogEntry[] }) {
+export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>; catalog: CatalogEntry[]; logos: Record<string, LogoInfo> }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
@@ -71,19 +65,21 @@ export function Home({ guides, catalog }: { guides: Record<string, Guide>; catal
     const hit = Object.keys(guides).find((k) => words.includes(k));
     if (hit) return router.push(`/guides/${hit}`);
 
-    setGen({ kind: "running", stage: 0, chars: 0 });
-    const timer = setInterval(
-      () => setGen((s) => (s.kind === "running" && s.stage < STAGES.length - 1 ? { ...s, stage: s.stage + 1 } : s)),
-      2500,
-    );
+    setGen({ kind: "running", steps: [], chars: 0 });
+    const onEvent = (e: AgentEvent) =>
+      setGen((s) => {
+        if (s.kind !== "running") return s;
+        if (e.type === "search") return { ...s, steps: [...s.steps, { kind: "search", text: e.query }] };
+        if (e.type === "fetch") return { ...s, steps: [...s.steps, { kind: "fetch", text: e.url }] };
+        if (e.type === "text") return { ...s, chars: s.chars + e.delta.length };
+        return s;
+      });
     try {
-      const g = await generateGuide(text, (soFar) => setGen((s) => (s.kind === "running" ? { ...s, chars: soFar.length } : s)));
-      saveDraft(g);
+      const payload = await generateGuide(text, onEvent);
+      saveDraft(payload);
       router.push("/draft");
     } catch (err) {
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
-    } finally {
-      clearInterval(timer);
     }
   }
 
@@ -155,6 +151,7 @@ export function Home({ guides, catalog }: { guides: Record<string, Guide>; catal
       <Library
         guides={guides}
         catalog={catalog}
+        logos={logos}
         onGenerate={(app) => runFromElsewhere(`${app}: what does it take to get a production OAuth app approved for my customers?`)}
         onNewApp={runFromElsewhere}
       />
@@ -172,29 +169,42 @@ function GenStatus({ state }: { state: GenState }) {
         <AlertDescription>{state.message}</AlertDescription>
       </Alert>
     );
-  const { stage, chars } = state;
+  const { steps, chars } = state;
+  const searches = steps.filter((x) => x.kind === "search").length;
+  const opened = steps.filter((x) => x.kind === "fetch").length;
+  const writing = chars > 0;
   return (
     <Card className="enter gap-4 p-5">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold tracking-tight">Researching</span>
-        <span className="tnum text-xs text-muted-foreground">{chars ? `${chars} characters drafted` : ""}</span>
+        <span className="font-semibold tracking-tight">{writing ? "Writing the guide" : "Researching with live web search"}</span>
+        <span className="tnum text-xs text-muted-foreground">
+          {searches} searches · {opened} pages opened{writing ? ` · ${chars} characters` : ""}
+        </span>
       </div>
-      <Progress value={((stage + 1) / STAGES.length) * 100} className="h-1.5" />
+      <Progress value={writing ? 90 : Math.min(80, 10 + steps.length * 8)} className="h-1.5" />
       <ol className="flex flex-col gap-2 text-sm">
-        {STAGES.map((s, i) => (
-          <li key={s} className={cn("flex items-center gap-2 transition-opacity duration-200", i >= stage && "text-muted-foreground", i > stage && "opacity-50")}>
-            {i < stage ? (
-              <span className={cn("inline-flex", i === stage - 1 && "pop")}>
-                <CheckIcon className="size-4 text-l1" />
-              </span>
-            ) : i === stage ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <span className="size-4 rounded-full border" />
-            )}
-            {s}
+        {steps.length === 0 && (
+          <li className="flex items-center gap-2 text-muted-foreground">
+            <Loader2Icon className="size-4 animate-spin" />
+            Finding the developer portal
           </li>
-        ))}
+        )}
+        {steps.slice(-6).map((x, i, arr) => {
+          const last = i === arr.length - 1 && !writing;
+          return (
+            <li key={`${x.kind}${x.text}${i}`} className={cn("enter flex min-w-0 items-center gap-2", !last && "text-muted-foreground")}>
+              {last ? <Loader2Icon className="size-4 shrink-0 animate-spin" /> : <CheckIcon className="pop size-4 shrink-0 text-l1" />}
+              <span className="shrink-0">{x.kind === "search" ? "Searched" : "Opened"}</span>
+              <span className="min-w-0 truncate text-muted-foreground">{x.kind === "search" ? `“${x.text}”` : x.text.replace(/^https?:\/\//, "")}</span>
+            </li>
+          );
+        })}
+        {writing && (
+          <li className="flex items-center gap-2">
+            <Loader2Icon className="size-4 animate-spin" />
+            Writing the guide from what it opened
+          </li>
+        )}
       </ol>
       <div className="flex flex-col gap-2 pt-1">
         <Skeleton className="h-4 w-2/3" />
@@ -208,11 +218,13 @@ function GenStatus({ state }: { state: GenState }) {
 function Library({
   guides,
   catalog,
+  logos,
   onGenerate,
   onNewApp,
 }: {
   guides: Record<string, Guide>;
   catalog: CatalogEntry[];
+  logos: Record<string, LogoInfo>;
   onGenerate: (app: string) => void;
   onNewApp: (query: string) => void;
 }) {
@@ -271,7 +283,11 @@ function Library({
           )}
           {rows.map((c, idx) => {
             const g = guides[c.key];
-            return g ? <ReviewedRow key={c.key} c={c} g={g} /> : <UnratedRow key={c.key} c={c} i={idx} onGenerate={onGenerate} />;
+            return g ? (
+              <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
+            ) : (
+              <UnratedRow key={c.key} c={c} i={idx} logo={logos[c.key]} onGenerate={onGenerate} />
+            );
           })}
         </ul>
       </Card>
@@ -299,7 +315,7 @@ function Library({
   );
 }
 
-function ReviewedRow({ c, g }: { c: CatalogEntry; g: Guide }) {
+function ReviewedRow({ c, g, logo }: { c: CatalogEntry; g: Guide; logo?: LogoInfo }) {
   const l = levelOf(g.difficulty);
   return (
     <li>
@@ -307,7 +323,7 @@ function ReviewedRow({ c, g }: { c: CatalogEntry; g: Guide }) {
         href={`/guides/${c.key}`}
         className="flex w-full min-w-0 items-start gap-4 p-4 text-left transition-colors hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset sm:items-center"
       >
-        <AppTile appKey={c.key} name={c.app} />
+        <AppLogo name={c.app} logo={logo} />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
           <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
             <span className="flex items-baseline gap-2">
@@ -340,10 +356,10 @@ function ReviewedRow({ c, g }: { c: CatalogEntry; g: Guide }) {
   );
 }
 
-function UnratedRow({ c, i, onGenerate }: { c: CatalogEntry; i: number; onGenerate: (app: string) => void }) {
+function UnratedRow({ c, i, logo, onGenerate }: { c: CatalogEntry; i: number; logo?: LogoInfo; onGenerate: (app: string) => void }) {
   return (
     <li className="enter flex items-start gap-4 p-4 sm:items-center" style={{ ["--i" as string]: i }}>
-      <AppTile appKey={c.key} name={c.app} />
+      <AppLogo name={c.app} logo={logo} />
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
         <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
           <span className="flex items-baseline gap-2">

@@ -1,75 +1,79 @@
 "use client";
 
-import type { Guide } from "./types";
+import type { GeneratePayload, Guide, LogoInfo } from "./types";
 
 /**
- * Browser side of the agent. Both calls stream plain text from an API route.
- * The routes (`/api/agent`, `/api/generate`) arrive in step 2; until then a 404 surfaces as a readable error.
+ * Browser side of the agent. Both routes stream NDJSON: research events (`search`, `fetch`, `text`)
+ * followed by `done` (with the payload) or `error`. The API key never leaves the server.
  */
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-async function streamText(url: string, body: unknown, onText: (soFar: string) => void): Promise<string> {
+export type AgentEvent =
+  | { type: "search"; query: string }
+  | { type: "fetch"; url: string }
+  | { type: "text"; delta: string }
+  | { type: "done"; payload?: GeneratePayload; research?: { searches: string[]; opened: string[] } }
+  | { type: "error"; message: string };
+
+async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent) => void): Promise<AgentEvent & { type: "done" }> {
   let res: Response;
   try {
     res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   } catch {
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }
-  if (res.status === 404) throw new Error("The agent isn't connected yet. Add ANTHROPIC_API_KEY to .env and the agent API route.");
-  if (res.status === 429) throw new Error("Too many requests right now. Wait a minute and try again.");
   if (!res.ok || !res.body) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || "Something went wrong. Try again.");
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || (res.status === 429 ? "Too many requests right now. Wait a minute and try again." : "Something went wrong. Try again."));
   }
+
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let text = "";
+  let buf = "";
+  let done: (AgentEvent & { type: "done" }) | null = null;
   for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    text += dec.decode(value, { stream: true });
-    onText(text);
+    const { done: end, value } = await reader.read();
+    if (end) break;
+    buf += dec.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line) continue;
+      const e = JSON.parse(line) as AgentEvent;
+      if (e.type === "error") throw new Error(e.message);
+      if (e.type === "done") done = e;
+      onEvent(e);
+    }
   }
-  return text;
+  if (!done) throw new Error("The research stopped before finishing. Try again.");
+  return done;
 }
 
-export function askAgent(guide: Guide, messages: ChatMessage[], onText: (soFar: string) => void) {
-  return streamText("/api/agent", { guide, messages }, onText);
+export async function askAgent(guide: Guide, messages: ChatMessage[], onEvent: (e: AgentEvent) => void) {
+  await streamEvents("/api/agent", { guide, messages }, onEvent);
 }
 
-export async function generateGuide(query: string, onText: (soFar: string) => void): Promise<Guide> {
-  const raw = (await streamText("/api/generate", { query }, onText)).replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "");
-  let g: Guide;
-  try {
-    g = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-  } catch {
-    throw new Error("The agent's answer came back malformed. Try again.");
-  }
-  g.key = "draft";
-  g.app ||= query;
-  g.provider ||= g.app;
-  g.hands_on ||= { text: "Unknown", days: 0.5 };
-  g.waiting ||= { best: "Unknown", normal: "Unknown", worst: "Unknown", days: 1 };
-  for (const k of ["cases", "steps", "blockers", "agent_can", "you_must", "unverified", "sources"] as const) g[k] ||= [];
-  // A generated guide can never be Tested.
-  for (const x of [...g.steps, ...g.blockers, ...g.cases]) if (x.ev === "tested") x.ev = "uncertain";
-  g._generated = true;
-  return g;
+export async function generateGuide(query: string, onEvent: (e: AgentEvent) => void): Promise<GeneratePayload> {
+  const done = await streamEvents("/api/generate", { query }, onEvent);
+  if (!done.payload) throw new Error("The agent's answer came back malformed. Try again.");
+  return done.payload;
 }
 
 const DRAFT_KEY = "oauth-runway:draft";
+export type Draft = { guide: Guide; logo?: LogoInfo; research?: GeneratePayload["research"] };
 
-export function saveDraft(g: Guide) {
+export function saveDraft(d: Draft) {
   try {
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(g));
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
   } catch {}
 }
 
-export function loadDraft(): Guide | null {
+export function loadDraft(): Draft | null {
   try {
     const s = sessionStorage.getItem(DRAFT_KEY);
-    return s ? (JSON.parse(s) as Guide) : null;
+    return s ? (JSON.parse(s) as Draft) : null;
   } catch {
     return null;
   }
