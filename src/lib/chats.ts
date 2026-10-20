@@ -4,8 +4,8 @@ import type { Guide } from "./types";
 import { normName } from "./utils";
 
 /**
- * Agent chat history per guide, kept in this browser (localStorage) so reopening a guide shows the conversation.
- * Never holds secrets: key-like messages are blocked before they are sent or stored.
+ * Agent chat history per user per guide, stored in the database (table `chats`). The agent route saves each
+ * question and answer; the panel loads the conversation when it opens. Key-like messages are blocked before sending.
  */
 export type StoredMessage = {
   role: "user" | "assistant";
@@ -16,29 +16,20 @@ export type StoredMessage = {
   at: string;
 };
 
-const KEY = "oauth-runway:chats";
-const MAX_PER_GUIDE = 60;
+/** Reviewed guides use their key; saved generated guides "g:<id>"; legacy browser drafts their app name. */
+export const chatId = (g: Guide, guideId?: string) => (guideId ? `g:${guideId}` : g._generated ? `draft:${normName(g.app)}` : g.key);
 
-/** Reviewed guides use their key; drafts use their app name, matching src/lib/drafts.ts. */
-export const chatId = (g: Guide) => (g._generated ? `draft:${normName(g.app)}` : g.key);
-
-function readAll(): Record<string, StoredMessage[]> {
+export async function loadChat(key: string): Promise<StoredMessage[]> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, StoredMessage[]>;
+    const res = await fetch(`/api/chats?key=${encodeURIComponent(key)}`, { cache: "no-store" });
+    return res.ok ? ((await res.json()).messages as StoredMessage[]) : [];
   } catch {
-    return {};
+    return [];
   }
 }
 
-export function loadChat(id: string): StoredMessage[] {
-  return readAll()[id] ?? [];
-}
-
-export function saveChat(id: string, messages: StoredMessage[]) {
+export async function clearChat(key: string) {
   try {
-    const all = readAll();
-    if (messages.length) all[id] = messages.slice(-MAX_PER_GUIDE);
-    else delete all[id];
-    localStorage.setItem(KEY, JSON.stringify(all));
+    await fetch(`/api/chats?key=${encodeURIComponent(key)}`, { method: "DELETE" });
   } catch {}
 }

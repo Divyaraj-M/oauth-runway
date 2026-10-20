@@ -2,6 +2,7 @@ import { cacheLife } from "next/cache";
 
 import { LOGOS } from "@/components/guide/logos";
 
+import { mirrorLogo } from "./cloudinary";
 import type { CatalogEntry, LogoInfo, LogoSource } from "./types";
 import { normName as norm } from "./utils";
 
@@ -67,15 +68,19 @@ export async function resolveLogo(q: LogoQuery): Promise<LogoInfo> {
   const hit = candidates(q)
     .map((n) => svgl.get(norm(n)))
     .find(Boolean);
+  // Remote SVG sources are mirrored into Cloudinary when it's configured (see cloudinary.ts).
+  const id = norm(q.app);
   if (hit) {
     const r = hit.route;
-    return typeof r === "string" ? { source: "svgl", light: r, tried } : { source: "svgl", light: r.light, dark: r.dark, tried };
+    return typeof r === "string"
+      ? { source: "svgl", light: await mirrorLogo(r, `${id}-svgl`), tried }
+      : { source: "svgl", light: await mirrorLogo(r.light, `${id}-svgl-light`), dark: await mirrorLogo(r.dark, `${id}-svgl-dark`), tried };
   }
 
   tried.push("brandbird");
   for (const n of candidates(q)) {
     const url = await brandbird(n);
-    if (url) return { source: "brandbird", light: url, tried };
+    if (url) return { source: "brandbird", light: await mirrorLogo(url, `${id}-brandbird`), tried };
   }
 
   // Publishable token (pk_…); it ends up in the image URL the browser loads, which is how Logo.dev expects it to be used.

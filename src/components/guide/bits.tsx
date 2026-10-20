@@ -57,7 +57,7 @@ export function Freshness({ g }: { g: Guide }) {
     return (
       <Badge variant="outline" className={cn(tag, "text-muted-foreground")}>
         <ClockIcon />
-        Generated just now
+        {g.checked ? `Generated ${fmtDate(g.checked)}` : "Generated just now"}
       </Badge>
     );
   return (

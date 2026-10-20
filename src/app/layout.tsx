@@ -2,9 +2,13 @@ import { KeyRoundIcon } from "lucide-react";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { AccountMenu } from "@/components/auth/account-menu";
+import { MeProvider } from "@/components/auth/me";
 import { AiSettingsButton } from "@/components/settings/ai-settings";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -25,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <TooltipProvider delayDuration={300} skipDelayDuration={150}>
+          <MeProvider>
           <div className="mx-auto flex max-w-4xl flex-col">
             <header className="flex h-14 items-center justify-between border-b">
               <Link href="/" className="flex items-center gap-2 rounded-md text-sm font-semibold tracking-tight focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none">
@@ -38,6 +43,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   Prototype v4
                 </Badge>
                 <AiSettingsButton />
+                <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
+                  <AccountMenu />
+                </Suspense>
               </div>
             </header>
             <main className="pt-8">{children}</main>
@@ -49,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </footer>
           </div>
           <Toaster position="bottom-right" />
+          </MeProvider>
         </TooltipProvider>
       </body>
     </html>

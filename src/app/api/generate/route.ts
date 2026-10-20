@@ -1,7 +1,9 @@
+import { currentUser, signInRequired } from "@/lib/auth/server";
+import { insertGuide, logEvent, newGuideId } from "@/lib/db";
 import { CATALOG } from "@/lib/guides";
 import { resolveLogoWithin } from "@/lib/logos";
 import { GENERATE_SYSTEM, generateUser } from "@/lib/prompts";
-import { credentialsFrom, modelOf, ndjson, noKey, research } from "@/lib/research";
+import { credentialsFrom, describeError, modelOf, ndjson, noKey, research } from "@/lib/research";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Evidence, GeneratePayload, Guide } from "@/lib/types";
 import { normName } from "@/lib/utils";
@@ -20,6 +22,8 @@ const urlKey = (u: string) =>
     .toLowerCase();
 
 export async function POST(req: Request) {
+  const user = await currentUser();
+  if (!user) return signInRequired();
   const creds = credentialsFrom(req);
   if (!creds) return noKey();
   const body = (await req.json().catch(() => null)) as { query?: unknown } | null;
@@ -28,20 +32,22 @@ export async function POST(req: Request) {
   // Same check as the browser, repeated here so a key never reaches the model or logs.
   if (looksLikeSecret(query)) return Response.json({ message: "Not sent: this looks like a credential." }, { status: 400 });
 
+  const t0 = Date.now();
   return ndjson(creds, async (send) => {
-    const { text, log } = await research({
-      creds,
-      system: GENERATE_SYSTEM,
-      messages: [{ role: "user", content: generateUser(query) }],
-      emit: send,
-      effort: "medium",
-    });
+    let text: string, log: Awaited<ReturnType<typeof research>>["log"];
+    try {
+      ({ text, log } = await research({ creds, system: GENERATE_SYSTEM, messages: [{ role: "user", content: generateUser(query) }], emit: send, effort: "medium" }));
+    } catch (err) {
+      await logEvent({ userId: user.id, kind: "generate", app: query.slice(0, 80), ok: false, ms: Date.now() - t0, detail: { error: describeError(err).message, model: modelOf(creds) } });
+      throw err;
+    }
 
     const raw = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
     let g: Guide;
     try {
       g = JSON.parse(raw);
     } catch {
+      await logEvent({ userId: user.id, kind: "generate", app: query.slice(0, 80), ok: false, ms: Date.now() - t0, detail: { error: "malformed", model: modelOf(creds) } });
       send({ type: "error", message: "The agent's answer came back malformed. Try again." });
       return;
     }
@@ -53,6 +59,7 @@ export async function POST(req: Request) {
     g.waiting ||= { best: "Unknown", normal: "Unknown", worst: "Unknown", days: 1 };
     for (const k of ["cases", "steps", "blockers", "agent_can", "you_must", "unverified", "sources"] as const) g[k] ||= [];
     g._generated = true;
+    g.checked = new Date().toISOString().slice(0, 10);
 
     // Durations must be short ranges ("1–3 hours"); models sometimes put a sentence here. Keep the layout honest.
     const dur = (v: unknown) => (typeof v === "string" && v.trim().length > 0 && v.length <= 28 ? v.trim() : "Unknown");
@@ -90,6 +97,17 @@ export async function POST(req: Request) {
       logo,
       research: { model: modelOf(creds), searches: log.searches, opened: log.opened, seen: log.seen.length, downgraded, rejected: [...rejected] },
     };
+    // Save to the shared library; the id is the share link.
+    payload.id = newGuideId();
+    await insertGuide({ id: payload.id, slug: normName(g.app), query, userId: user.id, payload });
+    await logEvent({
+      userId: user.id,
+      kind: "generate",
+      app: g.app,
+      ok: true,
+      ms: Date.now() - t0,
+      detail: { id: payload.id, model: modelOf(creds), level: g.difficulty, opened: log.opened.length, downgraded },
+    });
     send({ type: "done", payload });
   });
 }

@@ -32,6 +32,8 @@ async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent)
   if (!res.ok || !res.body) {
     const data = await res.json().catch(() => null);
     if (data?.code === "no_key") openAiSettings();
+    // The account menu (which has the router) sends the user to sign in.
+    if (data?.code === "sign_in") window.dispatchEvent(new Event("sign-in-required"));
     throw new Error(data?.message || (res.status === 429 ? "Too many requests right now. Wait a minute and try again." : "Something went wrong. Try again."));
   }
 
@@ -58,8 +60,9 @@ async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent)
   return done;
 }
 
-export async function askAgent(guide: Guide, messages: ChatMessage[], onEvent: (e: AgentEvent) => void) {
-  await streamEvents("/api/agent", { guide, messages }, onEvent);
+/** `chatKey` names the conversation saved for this user (reviewed guide key, or "g:<id>"). */
+export async function askAgent(guide: Guide, chatKey: string, messages: ChatMessage[], onEvent: (e: AgentEvent) => void) {
+  await streamEvents("/api/agent", { guide, chatKey, messages }, onEvent);
 }
 
 export async function generateGuide(query: string, onEvent: (e: AgentEvent) => void, signal?: AbortSignal): Promise<GeneratePayload> {

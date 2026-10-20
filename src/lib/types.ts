@@ -41,6 +41,8 @@ export type LogoInfo = { source: LogoSource; local?: string; light?: string; dar
 
 /** What /api/generate returns once research finishes. */
 export type GeneratePayload = {
+  /** Share id once saved to the database (/g/<id>). */
+  id?: string;
   guide: Guide;
   logo: LogoInfo;
   research: {

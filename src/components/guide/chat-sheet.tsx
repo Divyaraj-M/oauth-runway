@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { askAgent, type ChatMessage } from "@/lib/agent-client";
-import { chatId, loadChat, saveChat, type StoredMessage } from "@/lib/chats";
+import { clearChat, loadChat, type StoredMessage } from "@/lib/chats";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Guide } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -20,33 +20,38 @@ type TraceStep = { t: string; done: boolean };
 type Msg = Omit<StoredMessage, "trace"> & { trace?: TraceStep[]; pending?: boolean };
 
 const fromStored = (m: StoredMessage): Msg => ({ ...m, trace: m.trace?.map((t) => ({ t, done: true })) });
-const toStored = (m: Msg): StoredMessage => ({ role: m.role, content: m.content, error: m.error, at: m.at, trace: m.trace?.map((x) => x.t) });
 
 export function ChatSheet({
   guide: g,
+  chatKey: id,
   open,
   onOpenChange,
   draft,
   setDraft,
 }: {
   guide: Guide;
+  /** Names the conversation saved for this user. */
+  chatKey: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Message box text; owned by the parent so a step's "Ask" button can prefill it. */
   draft: string;
   setDraft: (text: string) => void;
 }) {
-  const id = chatId(g);
-  // Earlier questions for this guide come back from this browser's storage.
-  const [hist, setHist] = useState<Msg[]>(() => loadChat(id).map(fromStored));
+  const [hist, setHist] = useState<Msg[]>([]);
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
-  // Save finished turns (not the one still streaming).
+  // Earlier questions for this guide load from the database the first time the panel opens.
+  const loaded = useRef(false);
   useEffect(() => {
-    if (!busy) saveChat(id, hist.filter((m) => !m.pending).map(toStored));
-  }, [id, hist, busy]);
+    if (!open || loaded.current) return;
+    loaded.current = true;
+    loadChat(id).then((rows) => {
+      if (rows.length) setHist((h) => (h.length ? h : rows.map(fromStored)));
+    });
+  }, [open, id]);
 
   // Keep the newest message in view; ScrollArea scrolls its inner viewport, not the root.
   useEffect(() => {
@@ -82,7 +87,7 @@ export function ChatSheet({
     setHist((h) => [...h, { role: "user", content: q, at }, { role: "assistant", content: "", trace: [], pending: true, at }]);
 
     try {
-      await askAgent(g, sendable, (e) => {
+      await askAgent(g, id, sendable, (e) => {
         if (e.type === "search") addStep(`Searched “${e.query}”`);
         if (e.type === "fetch") addStep(`Opened ${e.url.replace(/^https?:\/\//, "")}`);
         if (e.type === "note") addStep(e.text);
@@ -109,12 +114,21 @@ export function ChatSheet({
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-base">Ask about {g.app}</SheetTitle>
             {hist.length > 0 && (
-              <Button variant="ghost" size="xs" className="text-muted-foreground" disabled={busy} onClick={() => setHist([])}>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground"
+                disabled={busy}
+                onClick={() => {
+                  setHist([]);
+                  clearChat(id);
+                }}
+              >
                 Clear
               </Button>
             )}
           </div>
-          <SheetDescription className="text-xs">Answers from this guide, researches what it doesn&apos;t cover. Saved in this browser.</SheetDescription>
+          <SheetDescription className="text-xs">Answers from this guide, researches what it doesn&apos;t cover. Saved to your account.</SheetDescription>
         </SheetHeader>
 
         <ScrollArea ref={box} className="min-h-0 flex-1">

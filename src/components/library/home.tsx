@@ -20,11 +20,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type AgentEvent, generateGuide } from "@/lib/agent-client";
-import { type SavedDraft, draftSlug, saveDraft, useDrafts } from "@/lib/drafts";
+import { refreshLibrary } from "@/app/actions";
+import { useMe } from "@/components/auth/me";
+import type { DraftSummary } from "@/lib/db";
 import { LEVELS, LEVEL_CLASS, fmtDate, levelOf } from "@/lib/levels";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { CatalogEntry, Guide, LogoInfo } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, normName } from "@/lib/utils";
 
 import { NewAppDialog } from "./new-app-dialog";
 
@@ -48,13 +50,24 @@ const FILTERS = [
 type Step = { kind: "search" | "fetch" | "note"; text: string };
 type GenState = { kind: "idle" } | { kind: "running"; steps: Step[]; chars: number } | { kind: "error"; title: string; message: string };
 
-export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>; catalog: CatalogEntry[]; logos: Record<string, LogoInfo> }) {
+export function Home({
+  guides,
+  catalog,
+  logos,
+  community,
+}: {
+  guides: Record<string, Guide>;
+  catalog: CatalogEntry[];
+  logos: Record<string, LogoInfo>;
+  /** Newest generated guide per app, from the database (shared by everyone). */
+  community: DraftSummary[];
+}) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
   const [gen, setGen] = useState<GenState>({ kind: "idle" });
   const abortRef = useRef<AbortController | null>(null);
-  const drafts = useDrafts();
+  const me = useMe();
 
   // Next.js keeps this page mounted but hidden (React Activity) after you navigate away, so a generation
   // can finish while you're elsewhere. Track visibility: the cleanup runs when hidden, the setup when shown again.
@@ -82,6 +95,10 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
     const hit = Object.keys(guides).find((k) => words.includes(k));
     if (hit) return router.push(`/guides/${hit}`);
 
+    // Ask the server rather than trusting cached state: the session may have just started or ended.
+    const signedIn = me.user ?? (await fetch("/api/me", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ user: null }))).user;
+    if (!signedIn) return router.push(`/auth/sign-in?next=${encodeURIComponent("/")}`);
+
     setGen({ kind: "running", steps: [], chars: 0 });
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -96,13 +113,16 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
       });
     try {
       const payload = await generateGuide(text, onEvent, ctrl.signal);
-      const slug = saveDraft(payload);
-      const href = `/draft?app=${encodeURIComponent(slug)}`;
+      const href = `/g/${payload.id}`;
+      // New guide shows up in the shared library and in "Your recent guides".
+      me.refresh();
+      await refreshLibrary();
+      router.refresh();
       // Reset so coming back to this page doesn't show a finished run as still "Writing the guide".
       setGen({ kind: "idle" });
       setQ("");
       if (visible.current) router.push(href);
-      else toast(`${payload.guide.app} guide is ready`, { description: "Saved to your drafts.", action: { label: "Open", onClick: () => router.push(href) } });
+      else toast(`${payload.guide.app} guide is ready`, { description: "Saved to the library.", action: { label: "Open", onClick: () => router.push(href) } });
     } catch (err) {
       if (ctrl.signal.aborted) return setGen({ kind: "idle" });
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
@@ -178,7 +198,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         </div>
 
         <div className="w-full max-w-2xl text-left">
-          {gen.kind === "idle" ? <RecentGuides drafts={drafts} /> : <GenStatus state={gen} onCancel={() => abortRef.current?.abort()} />}
+          {gen.kind === "idle" ? <RecentGuides guides={me.guides} /> : <GenStatus state={gen} onCancel={() => abortRef.current?.abort()} />}
         </div>
       </section>
 
@@ -186,6 +206,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         guides={guides}
         catalog={catalog}
         logos={logos}
+        community={community}
         onGenerate={(app) => runFromElsewhere(`${app}: what does it take to get a production OAuth app approved for my customers?`)}
         onNewApp={runFromElsewhere}
       />
@@ -203,30 +224,28 @@ function ago(iso: string) {
 }
 
 /** The last guides this browser generated, newest first; shown under the search when nothing is running. */
-function RecentGuides({ drafts }: { drafts: Record<string, SavedDraft> }) {
-  const recent = Object.entries(drafts)
-    .sort(([, a], [, b]) => b.savedAt.localeCompare(a.savedAt))
-    .slice(0, 4);
+function RecentGuides({ guides }: { guides: DraftSummary[] }) {
+  const recent = guides.slice(0, 4);
   if (!recent.length) return null;
   return (
     <div className="enter flex flex-col gap-2">
       <span className="text-xs font-medium text-muted-foreground">Your recent guides</span>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {recent.map(([slug, d]) => {
-          const l = levelOf(d.guide.difficulty);
+        {recent.map((d) => {
+          const l = levelOf(d.difficulty);
           return (
-            <Item key={slug} asChild variant="outline" size="sm" className="bg-card">
-              <Link href={`/draft?app=${encodeURIComponent(slug)}`}>
+            <Item key={d.id} asChild variant="outline" size="sm" className="bg-card">
+              <Link href={`/g/${d.id}`}>
                 <ItemMedia>
-                  <AppLogo name={d.guide.app} logo={d.logo} />
+                  <AppLogo name={d.app} logo={d.logo ?? undefined} />
                 </ItemMedia>
                 <ItemContent className="min-w-0 gap-0.5">
                   <ItemTitle className="w-full">
-                    <span className="truncate">{d.guide.app}</span>
+                    <span className="truncate">{d.app}</span>
                     <span className={cn("ml-auto shrink-0 text-xs font-medium", LEVEL_CLASS[l.n].text)}>L{l.n}</span>
                   </ItemTitle>
                   <ItemDescription className="truncate text-xs">
-                    Work {d.guide.hands_on.text} · Wait {d.guide.waiting.normal} · {ago(d.savedAt)}
+                    Work {d.work} · Wait {d.wait} · {ago(d.createdAt)}
                   </ItemDescription>
                 </ItemContent>
               </Link>
@@ -310,12 +329,14 @@ function Library({
   guides,
   catalog,
   logos,
+  community,
   onGenerate,
   onNewApp,
 }: {
   guides: Record<string, Guide>;
   catalog: CatalogEntry[];
   logos: Record<string, LogoInfo>;
+  community: DraftSummary[];
   onGenerate: (app: string) => void;
   onNewApp: (query: string) => void;
 }) {
@@ -323,21 +344,19 @@ function Library({
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const drafts = useDrafts();
+  const drafts = Object.fromEntries(community.map((d) => [d.slug, d]));
 
-  // Catalog apps, plus generated drafts for apps the catalog doesn't list (e.g. Pipedrive), at the end.
-  const known = new Set(catalog.map((c) => draftSlug(c.app)));
+  // Catalog apps, plus generated guides for apps the catalog doesn't list (e.g. Clay), at the end.
+  const known = new Set(catalog.map((c) => normName(c.app)));
   const entries: CatalogEntry[] = [
     ...catalog,
-    ...Object.entries(drafts)
-      .filter(([slug]) => !known.has(slug))
-      .map(([slug, d]) => ({ key: `draft:${slug}`, app: d.guide.app, provider: d.guide.provider, cat: "Draft", domain: d.guide.domain })),
+    ...community.filter((d) => !known.has(d.slug)).map((d) => ({ key: `draft:${d.slug}`, app: d.app, provider: d.app, cat: "Draft" })),
   ];
   // A reviewed guide always wins over a draft for the same app.
-  const draftOf = (c: CatalogEntry) => (guides[c.key] ? undefined : drafts[draftSlug(c.app)]);
+  const draftOf = (c: CatalogEntry) => (guides[c.key] ? undefined : drafts[normName(c.app)]);
   const levelFor = (c: CatalogEntry) => {
-    const g = guides[c.key] ?? draftOf(c)?.guide;
-    return g ? levelOf(g.difficulty).n : 0;
+    const d = guides[c.key]?.difficulty ?? draftOf(c)?.difficulty;
+    return d ? levelOf(d).n : 0;
   };
   const draftCount = entries.filter((c) => draftOf(c)).length;
 
@@ -357,7 +376,7 @@ function Library({
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold tracking-tight">Apps</h2>
-          <p className="text-sm text-muted-foreground">Reviewed guides show their level. Drafts you generate are saved here, in this browser.</p>
+          <p className="text-sm text-muted-foreground">Reviewed guides show their level. Drafts are AI-researched guides anyone signed in has generated.</p>
         </div>
         <p className="tnum hidden shrink-0 font-mono text-xs text-muted-foreground sm:block">
           {rows.length}/{entries.length} · {Object.keys(guides).length} reviewed{draftCount ? ` · ${draftCount} draft${draftCount > 1 ? "s" : ""}` : ""}
@@ -401,7 +420,7 @@ function Library({
               return g ? (
                 <ReviewedRow key={c.key} c={c} g={g} logo={logos[c.key]} />
               ) : d ? (
-                <DraftRow key={c.key} c={c} d={d} logo={logos[c.key] ?? d.logo} />
+                <DraftRow key={c.key} c={c} d={d} logo={logos[c.key] ?? d.logo ?? undefined} />
               ) : (
                 <UnratedRow key={c.key} c={c} i={showAll ? idx : -1} logo={logos[c.key]} onGenerate={onGenerate} />
               );
@@ -471,11 +490,11 @@ function ReviewedRow({ c, g, logo }: { c: CatalogEntry; g: Guide; logo?: LogoInf
 }
 
 /** A guide this browser generated: real level, but marked Draft and never presented as reviewed. */
-function DraftRow({ c, d, logo }: { c: CatalogEntry; d: SavedDraft; logo?: LogoInfo }) {
-  const l = levelOf(d.guide.difficulty);
+function DraftRow({ c, d, logo }: { c: CatalogEntry; d: DraftSummary; logo?: LogoInfo }) {
+  const l = levelOf(d.difficulty);
   return (
     <Item asChild className="rounded-none px-4 py-4" role="listitem">
-      <Link href={`/draft?app=${encodeURIComponent(draftSlug(c.app))}`}>
+      <Link href={`/g/${d.id}`}>
         <ItemMedia>
           <AppLogo name={c.app} logo={logo} />
         </ItemMedia>
@@ -497,13 +516,13 @@ function DraftRow({ c, d, logo }: { c: CatalogEntry; d: SavedDraft; logo?: LogoI
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <ItemDescription className="line-clamp-1">{d.guide.verdict.split(". ")[0]}.</ItemDescription>
+            <ItemDescription className="line-clamp-1">{d.verdict.split(". ")[0]}.</ItemDescription>
             <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <ClockIcon className="size-3.5" />
-                Work {d.guide.hands_on.text} · Wait {d.guide.waiting.normal}
+                Work {d.work} · Wait {d.wait}
               </span>
-              <span>Generated {fmtDate(d.savedAt.slice(0, 10))} · not reviewed</span>
+              <span>Generated {fmtDate(d.createdAt.slice(0, 10))} · not reviewed</span>
             </div>
           </div>
         </ItemContent>

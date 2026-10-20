@@ -63,6 +63,7 @@ export function GuideView({
   logo,
   onRemove,
   onShare,
+  guideId,
 }: {
   guide: Guide;
   logo?: LogoInfo;
@@ -70,8 +71,10 @@ export function GuideView({
   research?: GeneratePayload["research"];
   /** Saved drafts only: removes it from the library list. */
   onRemove?: () => void;
-  /** Generated guides: copies a self-contained share link. */
+  /** Generated guides: copies a share link. */
   onShare?: () => void;
+  /** Database id of a saved generated guide; names its chat ("g:<id>"). */
+  guideId?: string;
 }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
@@ -358,7 +361,7 @@ export function GuideView({
         Ask agent
       </Button>
 
-      <ChatSheet key={chatId(g)} guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} />
+      <ChatSheet key={chatId(g, guideId)} chatKey={chatId(g, guideId)} guide={g} open={chatOpen} onOpenChange={setChatOpen} draft={chatDraft} setDraft={setChatDraft} />
     </>
   );
 }

@@ -1,7 +1,9 @@
 import { Home } from "@/components/library/home";
+import { latestDrafts } from "@/lib/db";
 import { CATALOG, GUIDES } from "@/lib/guides";
 import { resolveLogos } from "@/lib/logos";
 
 export default async function Page() {
-  return <Home guides={GUIDES} catalog={CATALOG} logos={await resolveLogos(CATALOG)} />;
+  const [logos, community] = await Promise.all([resolveLogos(CATALOG), latestDrafts()]);
+  return <Home guides={GUIDES} catalog={CATALOG} logos={logos} community={community} />;
 }
