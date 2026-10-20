@@ -94,24 +94,24 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
 
   return (
     <>
-      <section className="grid grid-cols-1 gap-8 pt-6 pb-14 md:grid-cols-[1.25fr_1fr] md:items-end md:gap-x-12">
-        <div className="enter flex flex-col gap-4">
-          <h1 className="text-4xl leading-[1.08] font-semibold tracking-tighter text-balance md:text-[2.75rem]">How long until your OAuth app is approved?</h1>
-          <p className="max-w-[52ch] leading-relaxed text-muted-foreground">
+      <section className="flex flex-col items-center gap-8 pt-10 pb-16 text-center md:pt-16">
+        <div className="enter flex flex-col items-center gap-5">
+          <h1 className="max-w-3xl text-5xl leading-[1.02] font-semibold tracking-tighter text-balance md:text-7xl">How long until your OAuth app is approved?</h1>
+          <p className="max-w-[52ch] text-lg leading-relaxed text-muted-foreground">
             Name an app and what your agent should do in it. You get the difficulty, the work time, the waiting time, and what blocks approval.
           </p>
         </div>
 
-        <LevelLegend />
 
-        <div className="enter flex flex-col gap-3 md:col-span-2" style={{ ["--i" as string]: 1 }}>
+        <div className="enter flex w-full max-w-2xl flex-col items-center gap-3" style={{ ["--i" as string]: 1 }}>
           <form
+            className="w-full"
             onSubmit={(e) => {
               e.preventDefault();
               generate(q);
             }}
           >
-            <InputGroup className="h-11 bg-background shadow-xs">
+            <InputGroup className="h-12 bg-background text-left shadow-xs">
               <InputGroupAddon>
                 <SearchIcon />
               </InputGroupAddon>
@@ -133,7 +133,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
               </InputGroupAddon>
             </InputGroup>
           </form>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
             <span>Try</span>
             {TRY.map(([n, text]) => (
               <Button
@@ -153,7 +153,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         </div>
 
         {gen.kind !== "idle" && (
-          <div className="md:col-span-2">
+          <div className="w-full max-w-2xl text-left">
             <GenStatus state={gen} />
           </div>
         )}
@@ -167,27 +167,6 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         onNewApp={runFromElsewhere}
       />
     </>
-  );
-}
-
-/** The four difficulty levels, so the meters in the list below read at a glance. */
-function LevelLegend() {
-  return (
-    <ol className="enter order-last flex flex-col divide-y rounded-xl border bg-card md:order-none" style={{ ["--i" as string]: 1 }} aria-label="Difficulty levels">
-      {LEVELS.map((l) => (
-        <li key={l.n} className="flex items-center gap-3 px-4 py-3">
-          <div className="w-12 shrink-0">
-            <LevelMeter n={l.n} />
-          </div>
-          <div className="flex min-w-0 flex-col">
-            <span className={cn("text-sm font-medium", LEVEL_CLASS[l.n].text)}>
-              L{l.n} · {l.name}
-            </span>
-            <span className="text-xs text-muted-foreground md:truncate">{l.desc}</span>
-          </div>
-        </li>
-      ))}
-    </ol>
   );
 }
 
