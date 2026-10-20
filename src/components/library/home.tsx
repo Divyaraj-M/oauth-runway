@@ -40,7 +40,7 @@ const FILTERS = [
 ] as const;
 
 /** One line of live research activity, straight from the server's web search / fetch events. */
-type Step = { kind: "search" | "fetch"; text: string };
+type Step = { kind: "search" | "fetch" | "note"; text: string };
 type GenState = { kind: "idle" } | { kind: "running"; steps: Step[]; chars: number } | { kind: "error"; title: string; message: string };
 
 export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>; catalog: CatalogEntry[]; logos: Record<string, LogoInfo> }) {
@@ -71,6 +71,7 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
         if (s.kind !== "running") return s;
         if (e.type === "search") return { ...s, steps: [...s.steps, { kind: "search", text: e.query }] };
         if (e.type === "fetch") return { ...s, steps: [...s.steps, { kind: "fetch", text: e.url }] };
+        if (e.type === "note") return { ...s, steps: [...s.steps, { kind: "note", text: e.text }] };
         if (e.type === "text") return { ...s, chars: s.chars + e.delta.length };
         return s;
       });
@@ -176,7 +177,7 @@ function GenStatus({ state }: { state: GenState }) {
   return (
     <Card className="enter gap-4 p-5">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold tracking-tight">{writing ? "Writing the guide" : "Researching with live web search"}</span>
+        <span className="font-semibold tracking-tight">{writing ? "Writing the guide" : "Researching the provider's docs"}</span>
         <span className="tnum text-xs text-muted-foreground">
           {searches} searches · {opened} pages opened{writing ? ` · ${chars} characters` : ""}
         </span>
@@ -194,8 +195,14 @@ function GenStatus({ state }: { state: GenState }) {
           return (
             <li key={`${x.kind}${x.text}${i}`} className={cn("enter flex min-w-0 items-center gap-2", !last && "text-muted-foreground")}>
               {last ? <Loader2Icon className="size-4 shrink-0 animate-spin" /> : <CheckIcon className="pop size-4 shrink-0 text-l1" />}
-              <span className="shrink-0">{x.kind === "search" ? "Searched" : "Opened"}</span>
-              <span className="min-w-0 truncate text-muted-foreground">{x.kind === "search" ? `“${x.text}”` : x.text.replace(/^https?:\/\//, "")}</span>
+              {x.kind === "note" ? (
+                <span className="min-w-0 truncate">{x.text}</span>
+              ) : (
+                <>
+                  <span className="shrink-0">{x.kind === "search" ? "Searched" : "Opened"}</span>
+                  <span className="min-w-0 truncate text-muted-foreground">{x.kind === "search" ? `“${x.text}”` : x.text.replace(/^https?:\/\//, "")}</span>
+                </>
+              )}
             </li>
           );
         })}

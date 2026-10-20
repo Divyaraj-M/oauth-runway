@@ -1,7 +1,7 @@
 import { CATALOG } from "@/lib/guides";
 import { resolveLogo } from "@/lib/logos";
 import { GENERATE_SYSTEM, generateUser } from "@/lib/prompts";
-import { ndjson, research } from "@/lib/research";
+import { credentialsFrom, modelOf, ndjson, noKey, research } from "@/lib/research";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Evidence, GeneratePayload, Guide } from "@/lib/types";
 import { normName } from "@/lib/utils";
@@ -20,14 +20,17 @@ const urlKey = (u: string) =>
     .toLowerCase();
 
 export async function POST(req: Request) {
+  const creds = credentialsFrom(req);
+  if (!creds) return noKey();
   const body = (await req.json().catch(() => null)) as { query?: unknown } | null;
   const query = typeof body?.query === "string" ? body.query.trim().slice(0, 1000) : "";
   if (!query) return Response.json({ message: "Describe the app and what your agent does in it." }, { status: 400 });
   // Same check as the browser, repeated here so a key never reaches the model or logs.
   if (looksLikeSecret(query)) return Response.json({ message: "Not sent: this looks like a credential." }, { status: 400 });
 
-  return ndjson(async (send) => {
+  return ndjson(creds, async (send) => {
     const { text, log } = await research({
+      creds,
       system: GENERATE_SYSTEM,
       messages: [{ role: "user", content: generateUser(query) }],
       emit: send,
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
     const payload: GeneratePayload = {
       guide: g,
       logo,
-      research: { model: "claude-opus-5-5", searches: log.searches, opened: log.opened, seen: log.seen.length, downgraded },
+      research: { model: modelOf(creds), searches: log.searches, opened: log.opened, seen: log.seen.length, downgraded },
     };
     send({ type: "done", payload });
   });

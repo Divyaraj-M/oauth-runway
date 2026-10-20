@@ -22,7 +22,8 @@ Guides explain AND move the developer forward: the agent should produce things (
 
 ## Rules (non-negotiable)
 - Every claim carries an evidence label: Tested (done first-hand), Sourced (links a page actually read), Unverified. A generated guide can never be Tested.
-- No credentials anywhere: not in the repo, the guides, or the chat. The chat and search box block key-like input. API keys live in `.env`, never committed; ship `.env.example`.
+- No credentials in the repo, the guides, or the chat. The chat and search box block key-like input (client and server).
+- AI keys are bring-your-own: each user enters an Anthropic or Gemini key in Settings. It is stored only in their browser (localStorage), sent per request in `x-ai-*` headers, used for that request, and never stored or logged server-side (errors are redacted). There is no server-side AI key. Only `LOGO_DEV_TOKEN` (publishable `pk_`) lives in `.env`; ship `.env.example`.
 - Never invent precise review durations. Use ranges and list unknowns.
 - Brand logos: from SVGL, BrandBird and Logo.dev (see Current state), used under each brand's terms with attribution in the footer. The letter tile is always the last fallback.
 
@@ -30,7 +31,7 @@ Guides explain AND move the developer forward: the agent should produce things (
 - Next.js 16 (App Router, Turbopack, Cache Components) + Tailwind v4 + shadcn/ui (radix-nova, zinc tokens carried over from the prototype). Next 16 has breaking changes: read `node_modules/next/dist/docs/` before touching framework APIs (see AGENTS.md).
 - Routes: `/` library + live generation, `/guides/[key]` (static, from `data/guides/*.json`), `/draft` (live draft kept in sessionStorage only). Old `/#gmail` links redirect.
 - Guide data: `data/guides/<key>.json` (register new files in `src/lib/guides.ts`), app list in `data/catalog.json`.
-- Agent: `POST /api/generate` (`{query}`) and `POST /api/agent` (`{guide, messages}`) call Claude Opus 5.5 with server-side web search + web fetch (`src/lib/research.ts`), key from `ANTHROPIC_API_KEY` in `.env`. Both stream NDJSON: `search` / `fetch` / `text` events, then `done` or `error`. Generate's `done.payload` is `{guide, logo, research}`.
+- Agent: `POST /api/generate` (`{query}`) and `POST /api/agent` (`{guide, messages}`) use the user's own key from Settings (`src/lib/ai-settings.ts`, `src/components/settings/`): Anthropic = Claude Opus 5.5 with server-side web search + web fetch; Gemini = 3.8 Flash / 3.5 Flash-Lite with URL context (free tier, model picks pages to open first) plus Google Search when the paid-tier toggle is on (`src/lib/research.ts`). `POST /api/key-check` validates a key with a free listing call. Both stream NDJSON: `search` / `fetch` / `text` events, then `done` or `error`. Generate's `done.payload` is `{guide, logo, research}`.
 - Evidence is enforced server-side in the generate route: "sourced" survives only if the claim's `src` is a page the model actually opened (web_fetch); sources not opened are dropped; "tested" is never allowed.
 - Logos: server-side waterfall in `src/lib/logos.ts` (bundled SVGL → SVGL API → BrandBird file probe → Logo.dev by `domain` if `LOGO_DEV_TOKEN` is set → letter tile), cached for a day. New catalog entries in `data/catalog.json` (with `domain`) pick up logos with no code change.
 - `prototype/index.html` is the v3 single-file prototype, kept for reference only (it relied on `window.claude.use`, which only exists in claude.ai artifacts).

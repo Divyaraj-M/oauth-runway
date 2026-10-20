@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 
+import { AiSettingsButton } from "@/components/settings/ai-settings";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,9 +33,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 </span>
                 OAuth Runway
               </Link>
-              <Badge variant="outline" className="rounded-md px-2.5 font-semibold text-muted-foreground">
-                Prototype v4
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="hidden rounded-md px-2.5 font-semibold text-muted-foreground sm:inline-flex">
+                  Prototype v4
+                </Badge>
+                <AiSettingsButton />
+              </div>
             </header>
             <main className="pt-8">{children}</main>
             <footer className="pt-16 text-xs text-muted-foreground">

@@ -1,17 +1,22 @@
 "use client";
 
+import { aiHeaders } from "./ai-settings";
 import type { GeneratePayload, Guide, LogoInfo } from "./types";
 
 /**
  * Browser side of the agent. Both routes stream NDJSON: research events (`search`, `fetch`, `text`)
- * followed by `done` (with the payload) or `error`. The API key never leaves the server.
+ * followed by `done` (with the payload) or `error`. The user's own key (Settings) rides along in request headers.
  */
+
+/** Asks the header's Settings button to open (used when no key is saved). */
+export const openAiSettings = () => window.dispatchEvent(new Event("open-ai-settings"));
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type AgentEvent =
   | { type: "search"; query: string }
   | { type: "fetch"; url: string }
+  | { type: "note"; text: string }
   | { type: "text"; delta: string }
   | { type: "done"; payload?: GeneratePayload; research?: { searches: string[]; opened: string[] } }
   | { type: "error"; message: string };
@@ -19,12 +24,13 @@ export type AgentEvent =
 async function streamEvents(url: string, body: unknown, onEvent: (e: AgentEvent) => void): Promise<AgentEvent & { type: "done" }> {
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...aiHeaders() }, body: JSON.stringify(body) });
   } catch {
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }
   if (!res.ok || !res.body) {
     const data = await res.json().catch(() => null);
+    if (data?.code === "no_key") openAiSettings();
     throw new Error(data?.message || (res.status === 429 ? "Too many requests right now. Wait a minute and try again." : "Something went wrong. Try again."));
   }
 

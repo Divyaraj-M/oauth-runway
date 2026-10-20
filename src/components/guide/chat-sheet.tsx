@@ -68,6 +68,7 @@ export function ChatSheet({
       await askAgent(g, sendable, (e) => {
         if (e.type === "search") addStep(`Searched “${e.query}”`);
         if (e.type === "fetch") addStep(`Opened ${e.url.replace(/^https?:\/\//, "")}`);
+        if (e.type === "note") addStep(e.text);
         if (e.type === "text") update((m) => ({ content: m.content + e.delta }));
       });
     } catch (err) {
