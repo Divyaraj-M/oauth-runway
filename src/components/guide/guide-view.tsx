@@ -31,7 +31,7 @@ import type { GeneratePayload, Guide, LogoInfo, Who } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { AppLogo } from "./app-logo";
-import { EvidenceBadge, Freshness, LevelBadge, LevelMeter, tag } from "./bits";
+import { EvidenceBadge, Freshness, LevelMeter, tag } from "./bits";
 import { ChatSheet } from "./chat-sheet";
 
 const WHO_CLASS: Record<Who, string> = {
@@ -40,9 +40,10 @@ const WHO_CLASS: Record<Who, string> = {
   provider: "text-foreground",
 };
 
+// "Your case" first: which path applies to you decides everything else.
 const TABS = [
-  ["steps", "Steps"],
   ["case", "Your case"],
+  ["steps", "Steps"],
   ["blockers", "Blockers"],
   ["roles", "Who does what"],
   ["sources", "Sources"],
@@ -101,90 +102,66 @@ export function GuideView({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <header {...stagger()} className="enter flex flex-col gap-3 pt-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <LevelBadge n={l.n} />
-          <Badge variant="secondary" className={tag}>
-            {g._generated ? "Live draft" : "Reviewed by hand"}
-          </Badge>
-          <Freshness g={g} />
+      <header {...stagger()} className="enter grid grid-cols-1 gap-6 pt-4 md:grid-cols-[1fr_300px] md:items-start">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className={tag}>
+              {g._generated ? "Live draft" : "Reviewed by hand"}
+            </Badge>
+            <Freshness g={g} />
+          </div>
+          <div className="flex items-center gap-3">
+            <AppLogo name={g.app} logo={logo} />
+            <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
+          </div>
+          <p className="max-w-2xl leading-relaxed text-muted-foreground">{g.verdict}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <AppLogo name={g.app} logo={logo} />
-          <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
-        </div>
-        <p className="max-w-2xl text-muted-foreground">{g.verdict}</p>
+
+        {/* At-a-glance: difficulty and the two clocks, so the tabs sit above the fold. */}
+        <Card className="gap-4 p-5" aria-label="Difficulty and timeline">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className={cn("text-lg font-semibold tracking-tight", lc.text)}>Level {l.n} of 4</span>
+              <span className="text-sm font-medium">{l.name}</span>
+            </div>
+            <LevelMeter n={l.n} className="h-2" />
+            <p className="text-xs text-muted-foreground">{l.desc}</p>
+          </div>
+          <div className="flex flex-col gap-2 border-t pt-4">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label="Your work compared with waiting time">
+              <div className="h-full bg-primary" style={{ width: `${workPct}%` }} />
+              <div className={cn("h-full flex-1", lc.bgSoft)} />
+            </div>
+            <div className="tnum grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-primary" />
+                  Your work
+                </span>
+                <span className="font-semibold">{g.hands_on.text}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className={cn("size-1.5 rounded-full", lc.bgSoft)} />
+                  Waiting on {g.provider}
+                </span>
+                <span className="font-semibold">{g.waiting.normal}</span>
+              </div>
+            </div>
+            <p className="tnum text-xs text-muted-foreground">
+              Best {g.waiting.best} · Worst {g.waiting.worst}
+            </p>
+          </div>
+        </Card>
       </header>
 
-      <div {...stagger()} className="enter flex flex-col gap-3 pt-6">
-        <Alert role="note">
-          <ShieldIcon />
-          <AlertTitle>No credentials needed here</AlertTitle>
-          <AlertDescription>This guide and the agent never need your client secret. If you paste one into the chat, it is blocked before sending.</AlertDescription>
-        </Alert>
-      </div>
-
-      <div {...stagger()} className="enter grid grid-cols-1 gap-3 pt-6 md:grid-cols-3">
-        <Card className="gap-4 p-5">
-          <div className="text-sm font-medium text-muted-foreground">Difficulty</div>
-          <LevelMeter n={l.n} className="h-2.5" />
-          <div className="flex flex-col gap-1">
-            <span className={cn("text-2xl font-semibold tracking-tight", lc.text)}>Level {l.n} of 4</span>
-            <span className="font-medium">{l.name}</span>
-          </div>
-          <p className="text-sm text-muted-foreground">{l.desc}</p>
-        </Card>
-
-        <Card className="gap-4 p-5 md:col-span-2">
-          <div className="text-sm font-medium text-muted-foreground">Work vs waiting · normal case</div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label="Your work compared with waiting time">
-            <div className="h-full bg-primary" style={{ width: `${workPct}%` }} />
-            <div className={cn("h-full flex-1", lc.bgSoft)} />
-          </div>
-          <div className="tnum grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="size-2 rounded-full bg-primary" />
-                Your work
-              </span>
-              <span className="text-lg font-semibold">{g.hands_on.text}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className={cn("size-2 rounded-full", lc.bgSoft)} />
-                Waiting on {g.provider}
-              </span>
-              <span className="text-lg font-semibold">{g.waiting.normal}</span>
-            </div>
-          </div>
-          <Table className="tnum">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Waiting</TableHead>
-                <TableHead>Best</TableHead>
-                <TableHead>Normal</TableHead>
-                <TableHead>Worst</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow className="hover:bg-transparent">
-                <TableCell className="text-muted-foreground">Approval</TableCell>
-                <TableCell>{g.waiting.best}</TableCell>
-                <TableCell className="font-medium">{g.waiting.normal}</TableCell>
-                <TableCell>{g.waiting.worst}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </Card>
-      </div>
-
-      <Alert role="note" {...stagger()} className={cn("enter mt-3", lc.note)}>
+      <Alert role="note" {...stagger()} className={cn("enter mt-6", lc.note)}>
         <ClockIcon className={lc.text} />
         <AlertTitle>Start now</AlertTitle>
         <AlertDescription>{g.start_now}</AlertDescription>
       </Alert>
 
-      <Tabs defaultValue="steps" {...stagger()} className="enter gap-4 pt-8">
+      <Tabs defaultValue="case" {...stagger()} className="enter gap-4 pt-6">
         <div className="overflow-x-auto">
           <TabsList className="h-9">
             {TABS.map(([k, n]) => (
@@ -336,7 +313,7 @@ export function GuideView({
         </TabsContent>
       </Tabs>
 
-      <div {...stagger()} className="enter flex flex-wrap gap-2 pt-8">
+      <div {...stagger()} className="enter flex flex-wrap items-center gap-2 pt-8">
         <Button size="lg" className="px-4" onClick={() => openChat()}>
           <MessageCircleIcon />
           Ask the agent
@@ -357,6 +334,10 @@ export function GuideView({
             Remove from list
           </Button>
         )}
+        <p className="flex w-full items-center gap-1.5 pt-2 text-xs text-muted-foreground">
+          <ShieldIcon className="size-3" />
+          No credentials needed here. The agent never needs your client secret; anything that looks like one is blocked.
+        </p>
       </div>
 
       <Button
