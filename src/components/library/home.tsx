@@ -3,7 +3,8 @@
 import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, SearchIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { AppLogo } from "@/components/guide/app-logo";
 import { LevelMeter } from "@/components/guide/bits";
@@ -53,6 +54,16 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
   const [q, setQ] = useState("");
   const [gen, setGen] = useState<GenState>({ kind: "idle" });
 
+  // Next.js keeps this page mounted but hidden (React Activity) after you navigate away, so a generation
+  // can finish while you're elsewhere. Track visibility: the cleanup runs when hidden, the setup when shown again.
+  const visible = useRef(true);
+  useLayoutEffect(() => {
+    visible.current = true;
+    return () => {
+      visible.current = false;
+    };
+  }, []);
+
   // Links from the single-file prototype used #gmail etc.; send them to the real route.
   useEffect(() => {
     const k = location.hash.slice(1);
@@ -82,7 +93,12 @@ export function Home({ guides, catalog, logos }: { guides: Record<string, Guide>
     try {
       const payload = await generateGuide(text, onEvent);
       const slug = saveDraft(payload);
-      router.push(`/draft?app=${encodeURIComponent(slug)}`);
+      const href = `/draft?app=${encodeURIComponent(slug)}`;
+      // Reset so coming back to this page doesn't show a finished run as still "Writing the guide".
+      setGen({ kind: "idle" });
+      setQ("");
+      if (visible.current) router.push(href);
+      else toast(`${payload.guide.app} guide is ready`, { description: "Saved to your drafts.", action: { label: "Open", onClick: () => router.push(href) } });
     } catch (err) {
       setGen({ kind: "error", title: "Couldn't write the guide", message: err instanceof Error ? err.message : "Something went wrong. Try again." });
     }
