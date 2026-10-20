@@ -1,0 +1,97 @@
+{
+  "key": "notion",
+  "checked": "2026-10-20",
+  "app": "Notion",
+  "provider": "Notion",
+  "difficulty": "self",
+  "verdict": "The easiest of the four. A public integration gives you OAuth credentials as soon as you fill in a few URLs. Sources disagree on whether a security review is needed before publishing.",
+  "hands_on": {
+    "text": "30–60 minutes",
+    "days": 0.05
+  },
+  "waiting": {
+    "best": "None",
+    "normal": "None to unclear",
+    "worst": "Unknown",
+    "days": 0.5
+  },
+  "start_now": "Low risk to wait. Have a privacy policy, terms page and support email ready before you start.",
+  "cases": [
+    {
+      "case": "Your own workspace (internal integration)",
+      "outcome": "Token-based, no OAuth, no review",
+      "ev": "sourced"
+    },
+    {
+      "case": "Any Notion workspace (public integration)",
+      "outcome": "OAuth client issued on save",
+      "ev": "sourced"
+    },
+    {
+      "case": "Security review before publishing",
+      "outcome": "Sources conflict; not confirmed",
+      "ev": "uncertain"
+    }
+  ],
+  "steps": [
+    {
+      "who": "you",
+      "title": "Create a new integration and choose Public",
+      "detail": "From your Notion integrations dashboard.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Fill website, privacy policy, terms and support email",
+      "detail": "Needed before the client ID and secret appear.",
+      "ev": "sourced"
+    },
+    {
+      "who": "agent",
+      "title": "Choose capabilities",
+      "detail": "Notion uses capability toggles (read, update, insert content) instead of OAuth scopes.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Add your redirect URL and copy credentials",
+      "detail": "Users pick which pages to share during consent.",
+      "ev": "sourced"
+    }
+  ],
+  "blockers": [
+    {
+      "text": "One source says public integrations need a Notion security review; a hands-on write-up got credentials immediately with placeholder URLs.",
+      "ev": "uncertain"
+    },
+    {
+      "text": "Users choose pages at consent time. Your agent sees nothing the user didn't share.",
+      "ev": "sourced"
+    }
+  ],
+  "agent_can": [
+    "Pick the minimum capabilities for your features",
+    "Check your policy and terms URLs exist"
+  ],
+  "you_must": [
+    "Own the Notion workspace",
+    "Host a privacy policy and terms page"
+  ],
+  "unverified": [
+    "Whether Notion reviews public integrations before they can be used widely"
+  ],
+  "sources": [
+    {
+      "t": "Notion: Authorization",
+      "u": "https://developers.notion.com/reference/authorization"
+    },
+    {
+      "t": "n8n: Notion credentials",
+      "u": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+    },
+    {
+      "t": "Classmethod: trying a Notion public integration",
+      "u": "https://dev.classmethod.jp/articles/try-notion-api-with-public-integration/"
+    }
+  ]
+}

@@ -27,9 +27,12 @@ Guides explain AND move the developer forward: the agent should produce things (
 - Brand logos: the current page uses letter tiles. If adding logos, the developer adds the SVG files themselves (e.g. from svgl.app) under each brand's terms; keep the letter tile as fallback.
 
 ## Current state
-- `index.html`: working single-file prototype (v3). shadcn/ui zinc tokens + Geist, recreated with Tailwind play CDN. Library of 4 reviewed guides (Gmail L3, Aircall L4, Slack L2, Notion L1) + 16 unrated apps, live guide generation, agent chat sheet, motion with reduced-motion fallback.
-- The live agent uses `window.claude.use("sample")`, which only exists inside claude.ai artifacts. **It will not work when run locally.** Replace it first (see Next).
-- The agent has no web search yet. Its "research" is reading the guide JSON.
+- Next.js 16 (App Router, Turbopack, Cache Components) + Tailwind v4 + shadcn/ui (radix-nova, zinc tokens carried over from the prototype). Next 16 has breaking changes: read `node_modules/next/dist/docs/` before touching framework APIs (see AGENTS.md).
+- Routes: `/` library + live generation, `/guides/[key]` (static, from `data/guides/*.json`), `/draft` (live draft kept in sessionStorage only). Old `/#gmail` links redirect.
+- Guide data: `data/guides/<key>.json` (register new files in `src/lib/guides.ts`), app list in `data/catalog.json`.
+- Agent seam: `src/lib/agent-client.ts` streams plain text from `POST /api/agent` (`{guide, messages}`) and `POST /api/generate` (`{query}`, returns guide JSON). **Neither route exists yet**; the UI shows "agent isn't connected" until step 2.
+- The agent has no web search yet.
+- `prototype/index.html` is the v3 single-file prototype, kept for reference only (it relied on `window.claude.use`, which only exists in claude.ai artifacts).
 - Spec doc (requirements, metrics, open questions) lives in claude.ai as "OAuth Runway — Feature Spec".
 
 ## Evidence we have
@@ -38,7 +41,7 @@ Guides explain AND move the developer forward: the agent should produce things (
 - Slack Marketplace review up to ~12 weeks (third-party summary). Notion: sources disagree on whether public integrations get a security review.
 
 ## Next (in order)
-1. Move to Next.js + real shadcn components (`npx shadcn add card badge tabs sheet dialog alert table progress skeleton input textarea`). Port `index.html` page by page; keep the guide data as JSON in `data/guides/`.
+1. ~~Move to Next.js + real shadcn components; guide data as JSON in `data/guides/`.~~ Done.
 2. Add an API route for the agent that calls the Anthropic API with a web search tool, so Sourced claims cite pages actually opened. Key from `ANTHROPIC_API_KEY` in `.env`.
 3. Verification pass on Gmail, Aircall, Slack: record what was tested, sourced, corrected, unconfirmed → `VERIFICATION.md`.
 4. README: setup, key decisions, limitations.

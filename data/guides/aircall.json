@@ -1,0 +1,139 @@
+{
+  "key": "aircall",
+  "checked": "2026-10-20",
+  "app": "Aircall",
+  "provider": "Aircall",
+  "difficulty": "partner",
+  "verdict": "No self-serve console. You apply as a technology partner, and Aircall staff create your dev and production OAuth apps by hand over email. The work is small; the waiting is most of the timeline.",
+  "hands_on": {
+    "text": "2–4 days",
+    "days": 3
+  },
+  "waiting": {
+    "best": "2 weeks",
+    "normal": "6–8 weeks",
+    "worst": "3+ months",
+    "days": 49
+  },
+  "start_now": "Apply to the partner program and write your plan doc before you write code. Nothing moves until both are approved.",
+  "cases": [
+    {
+      "case": "One Aircall account only (private app, API key)",
+      "outcome": "No review, no partnership needed",
+      "ev": "sourced"
+    },
+    {
+      "case": "Many Aircall customers (public app, OAuth)",
+      "outcome": "Partner approval, plan review, manual app creation, launch review",
+      "ev": "tested"
+    },
+    {
+      "case": "Public marketplace listing",
+      "outcome": "Only after 10 customers use the integration",
+      "ev": "sourced"
+    }
+  ],
+  "steps": [
+    {
+      "who": "you",
+      "title": "Apply to the Technology Partner Program",
+      "detail": "Requires a live product with a company website.",
+      "ev": "sourced"
+    },
+    {
+      "who": "agent",
+      "title": "Draft the integration plan document",
+      "detail": "What you're building and the main features. Aircall reviews it before creating your dev account.",
+      "ev": "tested"
+    },
+    {
+      "who": "you",
+      "title": "Send a fresh email and phone number for the dev account",
+      "detail": "The email must not belong to any existing Aircall account. Trial lasts 4 months, extendable.",
+      "ev": "tested"
+    },
+    {
+      "who": "you",
+      "title": "Request the development OAuth app",
+      "detail": "Email your redirect URIs (up to 5). Localhost is rejected: use ngrok or a staging server.",
+      "ev": "tested"
+    },
+    {
+      "who": "provider",
+      "title": "Aircall creates the app and shares credentials",
+      "detail": "Took 3 days for dev in our run. Credentials arrive through a secure share link.",
+      "ev": "tested"
+    },
+    {
+      "who": "you",
+      "title": "Request the production OAuth app",
+      "detail": "Separate request with production redirect and install URIs.",
+      "ev": "tested"
+    },
+    {
+      "who": "provider",
+      "title": "Launch review and in-product publishing",
+      "detail": "Publishing inside Aircall's dashboard is mandatory so admins can uninstall.",
+      "ev": "tested"
+    }
+  ],
+  "blockers": [
+    {
+      "text": "Plan document is a hard gate. The dev account is not created until it's approved.",
+      "ev": "tested"
+    },
+    {
+      "text": "Every follow-up email moves your request to the back of the queue. Wait at least 3 business days.",
+      "ev": "tested"
+    },
+    {
+      "text": "Status changes are silent. Our dev account was activated without notice and later suspended without a reason (fixed same day on request).",
+      "ev": "tested"
+    },
+    {
+      "text": "Going quiet is also risky: Aircall can decommission assets if you stop replying. They expect completion within 6 months.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Webhooks are verified with a token in the payload, not a signature header. There is no revoke endpoint.",
+      "ev": "tested"
+    },
+    {
+      "text": "Rate limit is 120 requests per minute per company.",
+      "ev": "tested"
+    }
+  ],
+  "agent_can": [
+    "Draft the partner application and plan doc",
+    "Draft each email with the exact fields Aircall asks for",
+    "Track who owes the next reply and when to follow up",
+    "List redirect URIs that Aircall will accept"
+  ],
+  "you_must": [
+    "Be approved as a technology partner",
+    "Send every email from your company address",
+    "Run a public tunnel or staging server",
+    "Fill the publishing form and assets"
+  ],
+  "unverified": [
+    "Waiting times come from one real integration (Aug–Oct 2026) plus Aircall's stated review windows; other teams may move faster"
+  ],
+  "sources": [
+    {
+      "t": "First-hand: a CRM's Aircall integration email thread, Aug 31 – Oct 19 2026",
+      "u": ""
+    },
+    {
+      "t": "Aircall: Build & Launch",
+      "u": "https://developer.aircall.io/docs/launch-process"
+    },
+    {
+      "t": "Aircall: How to publish an app",
+      "u": "https://developer.aircall.io/build/"
+    },
+    {
+      "t": "Aircall: AI ecosystem developer guide",
+      "u": "https://aircall.io/en-au/blog/tech/ai-ecosystem-developer-guide/"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "key": "slack",
+  "checked": "2026-10-20",
+  "app": "Slack",
+  "provider": "Slack",
+  "difficulty": "review",
+  "verdict": "Instant for your own workspace. Distributing to other workspaces is mostly self-serve. Listing in the Slack Marketplace is the slow part: the longest review queue of the four.",
+  "hands_on": {
+    "text": "1–3 hours",
+    "days": 0.2
+  },
+  "waiting": {
+    "best": "Same day",
+    "normal": "Same day (unlisted)",
+    "worst": "~12 weeks (Marketplace)",
+    "days": 1
+  },
+  "start_now": "If you need a Marketplace listing at launch, submit as early as possible. A rejected or broken submission resets your place in the queue.",
+  "cases": [
+    {
+      "case": "Your own workspace",
+      "outcome": "Works immediately, no review",
+      "ev": "sourced"
+    },
+    {
+      "case": "Other workspaces, unlisted",
+      "outcome": "Turn on public distribution; no Marketplace review",
+      "ev": "uncertain"
+    },
+    {
+      "case": "Listed in Slack Marketplace",
+      "outcome": "Preliminary review (up to 10 business days) + functional review (up to 10 weeks)",
+      "ev": "sourced"
+    }
+  ],
+  "steps": [
+    {
+      "who": "you",
+      "title": "Create the app at api.slack.com/apps",
+      "detail": "From scratch or from a manifest.",
+      "ev": "sourced"
+    },
+    {
+      "who": "agent",
+      "title": "Write the app manifest with minimal scopes",
+      "detail": "Scopes are hard to change after listing.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Add the redirect URL and install to your workspace",
+      "detail": "Client ID and secret are available right away.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Enable public distribution if other workspaces need it",
+      "detail": "Requires HTTPS redirect URLs.",
+      "ev": "uncertain"
+    },
+    {
+      "who": "provider",
+      "title": "Marketplace review (optional)",
+      "detail": "Slack tests the app themselves; you must give working credentials for your own service.",
+      "ev": "sourced"
+    }
+  ],
+  "blockers": [
+    {
+      "text": "Once listed, scopes and config are locked. Each later change goes through review again, up to 6 weeks.",
+      "ev": "sourced"
+    },
+    {
+      "text": "A returned submission loses its place in the queue.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Reviewers need a working test account on your product, not just Slack.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Some scopes are not accepted in the Marketplace at all.",
+      "ev": "sourced"
+    }
+  ],
+  "agent_can": [
+    "Generate the manifest from your features",
+    "Pre-check the Marketplace submission checklist",
+    "Draft listing copy and the security questionnaire answers"
+  ],
+  "you_must": [
+    "Own the Slack app and a test workspace",
+    "Provide reviewer credentials for your product",
+    "Submit and respond to review feedback"
+  ],
+  "unverified": [
+    "Unlisted public distribution rules were not re-checked this session",
+    "Review durations are maximums from a third-party summary, not averages"
+  ],
+  "sources": [
+    {
+      "t": "Slack Marketplace review guide",
+      "u": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"
+    },
+    {
+      "t": "WorkOS: OAuth app approval on Slack, Microsoft, Atlassian",
+      "u": "https://workos.com/blog/oauth-app-approval-slack-microsoft-atlassian"
+    },
+    {
+      "t": "Slack: Marketplace review FAQ",
+      "u": "https://slack.com/blog/news/slack-app-directory-review-process"
+    }
+  ]
+}

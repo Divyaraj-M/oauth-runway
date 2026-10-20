@@ -1,0 +1,46 @@
+import { KeyRoundIcon } from "lucide-react";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+import "./globals.css";
+
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "OAuth Runway",
+  description: "How long until your OAuth app is approved? Difficulty, work vs waiting time, and blockers for each provider.",
+};
+
+export const viewport: Viewport = { viewportFit: "cover" };
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
+        <TooltipProvider>
+          <div className="mx-auto flex max-w-4xl flex-col">
+            <header className="flex h-14 items-center justify-between border-b">
+              <Link href="/" className="flex items-center gap-2 rounded-md text-sm font-semibold tracking-tight focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none">
+                <span className="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <KeyRoundIcon className="size-3.5" />
+                </span>
+                OAuth Runway
+              </Link>
+              <Badge variant="outline" className="rounded-md px-2.5 font-semibold text-muted-foreground">
+                Prototype v4
+              </Badge>
+            </header>
+            <main className="pt-8">{children}</main>
+          </div>
+          <Toaster position="bottom-right" />
+        </TooltipProvider>
+      </body>
+    </html>
+  );
+}

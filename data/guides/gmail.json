@@ -1,0 +1,136 @@
+{
+  "key": "gmail",
+  "checked": "2026-10-20",
+  "app": "Gmail",
+  "provider": "Google",
+  "difficulty": "audit",
+  "verdict": "Credentials take an afternoon. Going live depends entirely on scopes: send-only needs a standard review, anything that reads mail triggers Google's strictest review plus a paid yearly security assessment.",
+  "hands_on": {
+    "text": "2–4 hours",
+    "days": 0.3
+  },
+  "waiting": {
+    "best": "~1 week",
+    "normal": "4–8 weeks",
+    "worst": "3+ months",
+    "days": 42
+  },
+  "start_now": "If your agent reads email, submit for verification the day you know your scopes. The security assessment runs on Google's clock, not yours.",
+  "cases": [
+    {
+      "case": "Only your company's Google Workspace accounts (Internal app)",
+      "outcome": "No Google review",
+      "ev": "sourced"
+    },
+    {
+      "case": "Send email only (gmail.send, a 'sensitive' scope)",
+      "outcome": "App verification, no security assessment",
+      "ev": "sourced"
+    },
+    {
+      "case": "Read, modify or full mail access (restricted scopes)",
+      "outcome": "Verification + CASA security assessment, renewed every 12 months",
+      "ev": "sourced"
+    }
+  ],
+  "steps": [
+    {
+      "who": "you",
+      "title": "Create a Google Cloud project and enable the Gmail API",
+      "detail": "Free. Needs a Google account.",
+      "ev": "sourced"
+    },
+    {
+      "who": "agent",
+      "title": "Pick the smallest scope set for your features",
+      "detail": "Map each feature to one scope. Drop anything you don't call; one restricted scope pulls the whole app into the strict track.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Configure the consent screen",
+      "detail": "App name, support email, logo, homepage, privacy policy URL, authorized domain. Internal vs External audience is chosen here.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Create a Web OAuth client",
+      "detail": "Add your redirect URL (for Composio: https://backend.composio.dev/api/v1/auth-apps/add). Copy client ID and secret.",
+      "ev": "sourced"
+    },
+    {
+      "who": "you",
+      "title": "Test with up to 100 test users",
+      "detail": "Unverified apps show a warning screen and have a user cap. Fine for building, not for launch.",
+      "ev": "sourced"
+    },
+    {
+      "who": "agent",
+      "title": "Draft the verification package",
+      "detail": "Scope justifications, demo video script, privacy policy checklist.",
+      "ev": "uncertain"
+    },
+    {
+      "who": "provider",
+      "title": "Google reviews the app",
+      "detail": "Brand check, then scope review. Restricted scopes add a CASA assessment by a Google-approved lab.",
+      "ev": "sourced"
+    }
+  ],
+  "blockers": [
+    {
+      "text": "Composio's Gmail form pre-selects https://mail.google.com/ (full mail access), a restricted scope. Keeping the default puts you on the hardest track.",
+      "ev": "tested"
+    },
+    {
+      "text": "gmail.readonly, gmail.modify, gmail.compose and gmail.metadata are all restricted. There is no 'light' way to read mail.",
+      "ev": "sourced"
+    },
+    {
+      "text": "CASA assessment costs a few hundred to a few thousand dollars a year, from third-party estimates.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Scopes in your code must match the consent screen, or users keep seeing the unverified-app warning.",
+      "ev": "sourced"
+    },
+    {
+      "text": "Exact review times for restricted scopes are not published by Google.",
+      "ev": "uncertain"
+    }
+  ],
+  "agent_can": [
+    "Map your features to the minimum scopes",
+    "Flag restricted scopes before you submit",
+    "Draft scope justifications and the demo video script",
+    "Check your privacy policy covers Google's required disclosures"
+  ],
+  "you_must": [
+    "Own the Google Cloud project and domain",
+    "Record the demo video",
+    "Hire and work with a CASA assessor (restricted scopes)",
+    "Click submit and answer Google's emails"
+  ],
+  "unverified": [
+    "Review times above are ranges from developer reports, not Google commitments",
+    "Assessment cost depends on the lab and tier"
+  ],
+  "sources": [
+    {
+      "t": "Composio dashboard, Gmail auth config (walked through Oct 2026)",
+      "u": "https://dashboard.composio.dev"
+    },
+    {
+      "t": "Composio: Gmail scope tiers and CASA",
+      "u": "https://composio.dev/content/ship-gmail-integration-in-minutes"
+    },
+    {
+      "t": "Nango: Google security review",
+      "u": "https://nango.dev/docs/api-integrations/google-shared/google-security-review"
+    },
+    {
+      "t": "Composio: Google OAuth setup guide",
+      "u": "https://composio.dev/auth/googleapps"
+    }
+  ]
+}

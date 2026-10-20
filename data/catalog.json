@@ -1,0 +1,122 @@
+[
+  {
+    "key": "gmail",
+    "app": "Gmail",
+    "provider": "Google",
+    "cat": "Email"
+  },
+  {
+    "key": "aircall",
+    "app": "Aircall",
+    "provider": "Aircall",
+    "cat": "Calling"
+  },
+  {
+    "key": "slack",
+    "app": "Slack",
+    "provider": "Slack",
+    "cat": "Messaging"
+  },
+  {
+    "key": "notion",
+    "app": "Notion",
+    "provider": "Notion",
+    "cat": "Docs"
+  },
+  {
+    "key": "linear",
+    "app": "Linear",
+    "provider": "Linear",
+    "cat": "Issue tracking"
+  },
+  {
+    "key": "jira",
+    "app": "Jira",
+    "provider": "Atlassian",
+    "cat": "Issue tracking"
+  },
+  {
+    "key": "confluence",
+    "app": "Confluence",
+    "provider": "Atlassian",
+    "cat": "Docs"
+  },
+  {
+    "key": "github",
+    "app": "GitHub",
+    "provider": "GitHub",
+    "cat": "Code"
+  },
+  {
+    "key": "hubspot",
+    "app": "HubSpot",
+    "provider": "HubSpot",
+    "cat": "CRM"
+  },
+  {
+    "key": "salesforce",
+    "app": "Salesforce",
+    "provider": "Salesforce",
+    "cat": "CRM"
+  },
+  {
+    "key": "zoom",
+    "app": "Zoom",
+    "provider": "Zoom",
+    "cat": "Meetings"
+  },
+  {
+    "key": "calendly",
+    "app": "Calendly",
+    "provider": "Calendly",
+    "cat": "Scheduling"
+  },
+  {
+    "key": "googlecalendar",
+    "app": "Google Calendar",
+    "provider": "Google",
+    "cat": "Calendar"
+  },
+  {
+    "key": "googledrive",
+    "app": "Google Drive",
+    "provider": "Google",
+    "cat": "Files"
+  },
+  {
+    "key": "outlook",
+    "app": "Outlook",
+    "provider": "Microsoft",
+    "cat": "Email"
+  },
+  {
+    "key": "teams",
+    "app": "Microsoft Teams",
+    "provider": "Microsoft",
+    "cat": "Messaging"
+  },
+  {
+    "key": "asana",
+    "app": "Asana",
+    "provider": "Asana",
+    "cat": "Projects"
+  },
+  {
+    "key": "zendesk",
+    "app": "Zendesk",
+    "provider": "Zendesk",
+    "cat": "Support"
+  },
+  {
+    "key": "dropbox",
+    "app": "Dropbox",
+    "provider": "Dropbox",
+    "cat": "Files"
+  },
+  {
+    "key": "airtable",
+    "app": "Airtable",
+    "provider": "Airtable",
+    "cat": "Database"
+  }
+]
