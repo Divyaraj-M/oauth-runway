@@ -1,0 +1,888 @@
+<title>OAuth Runway</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: {
+      border: "hsl(var(--border) / <alpha-value>)", input: "hsl(var(--input) / <alpha-value>)", ring: "hsl(var(--ring) / <alpha-value>)",
+      background: "hsl(var(--background) / <alpha-value>)", foreground: "hsl(var(--foreground) / <alpha-value>)",
+      primary: { DEFAULT: "hsl(var(--primary) / <alpha-value>)", foreground: "hsl(var(--primary-foreground) / <alpha-value>)" },
+      secondary: { DEFAULT: "hsl(var(--secondary) / <alpha-value>)", foreground: "hsl(var(--secondary-foreground) / <alpha-value>)" },
+      muted: { DEFAULT: "hsl(var(--muted) / <alpha-value>)", foreground: "hsl(var(--muted-foreground) / <alpha-value>)" },
+      accent: { DEFAULT: "hsl(var(--accent) / <alpha-value>)", foreground: "hsl(var(--accent-foreground) / <alpha-value>)" },
+      destructive: { DEFAULT: "hsl(var(--destructive) / <alpha-value>)", foreground: "hsl(var(--destructive-foreground) / <alpha-value>)" },
+      card: { DEFAULT: "hsl(var(--card) / <alpha-value>)", foreground: "hsl(var(--card-foreground) / <alpha-value>)" },
+      l1: "hsl(var(--level-1) / <alpha-value>)", l2: "hsl(var(--level-2) / <alpha-value>)",
+      l3: "hsl(var(--level-3) / <alpha-value>)", l4: "hsl(var(--level-4) / <alpha-value>)"
+    },
+    borderRadius: { xl: "calc(var(--radius) + 4px)", lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
+    fontFamily: { sans: ["Geist", "ui-sans-serif", "system-ui", "sans-serif"], mono: ["Geist Mono", "ui-monospace", "Menlo", "monospace"] }
+  } }
+};
+</script>
+<style>
+/* shadcn/ui zinc theme tokens (new-york). Layout: one centred column; guide = header, difficulty + two clocks, tabs; agent chat lives in a right-side sheet. */
+:root{
+  --background:0 0% 100%; --foreground:240 10% 3.9%;
+  --card:0 0% 100%; --card-foreground:240 10% 3.9%;
+  --primary:240 5.9% 10%; --primary-foreground:0 0% 98%;
+  --secondary:240 4.8% 95.9%; --secondary-foreground:240 5.9% 10%;
+  --muted:240 4.8% 95.9%; --muted-foreground:240 3.8% 46.1%;
+  --accent:240 4.8% 95.9%; --accent-foreground:240 5.9% 10%;
+  --destructive:0 84.2% 60.2%; --destructive-foreground:0 0% 98%;
+  --border:240 5.9% 90%; --input:240 5.9% 90%; --ring:240 5.9% 10%;
+  --radius:0.5rem;
+  --level-1:142 71% 33%; --level-2:199 89% 38%; --level-3:32 95% 42%; --level-4:0 72% 50%;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --background:240 10% 3.9%; --foreground:0 0% 98%;
+  --card:240 10% 3.9%; --card-foreground:0 0% 98%;
+  --primary:0 0% 98%; --primary-foreground:240 5.9% 10%;
+  --secondary:240 3.7% 15.9%; --secondary-foreground:0 0% 98%;
+  --muted:240 3.7% 15.9%; --muted-foreground:240 5% 64.9%;
+  --accent:240 3.7% 15.9%; --accent-foreground:0 0% 98%;
+  --destructive:0 62.8% 30.6%; --destructive-foreground:0 0% 98%;
+  --border:240 3.7% 15.9%; --input:240 3.7% 15.9%; --ring:240 4.9% 83.9%;
+  --level-1:142 69% 58%; --level-2:199 89% 62%; --level-3:38 92% 58%; --level-4:0 84% 66%;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --background:240 10% 3.9%; --foreground:0 0% 98%;
+  --card:240 10% 3.9%; --card-foreground:0 0% 98%;
+  --primary:0 0% 98%; --primary-foreground:240 5.9% 10%;
+  --secondary:240 3.7% 15.9%; --secondary-foreground:0 0% 98%;
+  --muted:240 3.7% 15.9%; --muted-foreground:240 5% 64.9%;
+  --accent:240 3.7% 15.9%; --accent-foreground:0 0% 98%;
+  --destructive:0 62.8% 30.6%; --destructive-foreground:0 0% 98%;
+  --border:240 3.7% 15.9%; --input:240 3.7% 15.9%; --ring:240 4.9% 83.9%;
+  --level-1:142 69% 58%; --level-2:199 89% 62%; --level-3:38 92% 58%; --level-4:0 84% 66%;
+  color-scheme:dark}
+*,::before,::after{border-color:hsl(var(--border))}
+body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:Geist,ui-sans-serif,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+h1,h2,h3{text-wrap:balance}
+.tnum{font-variant-numeric:tabular-nums}
+details>summary{list-style:none}details>summary::-webkit-details-marker{display:none}
+details[open] .chev{transform:rotate(180deg)}
+.tip{position:relative}
+.tip>.tip-c{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .15s;width:max-content;max-width:240px;white-space:normal;z-index:50}
+.tip:hover>.tip-c,.tip:focus-visible>.tip-c{opacity:1}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}
+/* Motion: Emil-weighted (fast, restrained) with Jakub polish. Only transform, opacity, filter animate. */
+:root{--ease-out:cubic-bezier(0.23,1,0.32,1);--ease-in:cubic-bezier(0.55,0,1,0.45);--ease-drawer:cubic-bezier(0.32,0.72,0,1)}
+@keyframes enter{from{opacity:0;transform:translateY(8px);filter:blur(4px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:scale(.8);filter:blur(2px)}}
+.enter{animation:enter 320ms var(--ease-out) backwards;animation-delay:calc(var(--i,0) * 40ms)}
+.fade{animation:fade 160ms var(--ease-out) backwards}
+.pop{animation:pop 220ms var(--ease-out) backwards}
+button:not(:disabled):not(.lib):active{transform:scale(.97)}
+button{transition-property:color,background-color,border-color,box-shadow,transform;transition-duration:150ms;transition-timing-function:var(--ease-out)}
+.overlay{opacity:0;transition:opacity 200ms var(--ease-out)}.overlay[data-open]{opacity:1}
+.overlay[data-closing]{opacity:0;transition:opacity 160ms var(--ease-in)}
+.sheet{transform:translateX(100%);transition:transform 320ms var(--ease-drawer)}.sheet[data-open]{transform:none}
+.sheet[data-closing]{transform:translateX(100%);transition:transform 200ms var(--ease-in)}
+.dlg{opacity:0;transform:translate(-50%,-50%) scale(.96);filter:blur(4px);transition:opacity 200ms var(--ease-out),transform 200ms var(--ease-out),filter 200ms var(--ease-out)}
+.dlg[data-open]{opacity:1;transform:translate(-50%,-50%);filter:none}
+.dlg[data-closing]{opacity:0;transform:translate(-50%,-50%) scale(.98);filter:none;transition:opacity 140ms var(--ease-in),transform 140ms var(--ease-in)}
+.toast{animation:enter 240ms var(--ease-out) backwards}.toast[data-closing]{opacity:0;transform:translateY(4px);transition:opacity 160ms var(--ease-in),transform 160ms var(--ease-in)}
+.bar{transform-origin:left;transition:transform 700ms var(--ease-out)}
+details[open]>ol{animation:fade 160ms var(--ease-out)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="mx-auto flex max-w-4xl flex-col">
+  <header class="flex h-14 items-center justify-between border-b">
+    <button id="home-btn" type="button" class="flex items-center gap-2 text-sm font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md">
+      <span class="grid size-6 place-items-center rounded-md bg-primary text-primary-foreground" id="logo"></span>OAuth Runway
+    </button>
+    <span class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">Prototype v3</span>
+  </header>
+  <main id="view" class="pt-8"></main>
+</div>
+<div id="sheet-root"></div>
+<div id="toast-root" class="pointer-events-none fixed z-[60]" style="bottom:calc(16px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px))"></div>
+
+<script>
+const LIB = {
+gmail:{
+  app:"Gmail", provider:"Google", difficulty:"audit",
+  verdict:"Credentials take an afternoon. Going live depends entirely on scopes: send-only needs a standard review, anything that reads mail triggers Google's strictest review plus a paid yearly security assessment.",
+  hands_on:{text:"2–4 hours", days:0.3},
+  waiting:{best:"~1 week", normal:"4–8 weeks", worst:"3+ months", days:42},
+  start_now:"If your agent reads email, submit for verification the day you know your scopes. The security assessment runs on Google's clock, not yours.",
+  cases:[
+    {case:"Only your company's Google Workspace accounts (Internal app)", outcome:"No Google review", ev:"sourced"},
+    {case:"Send email only (gmail.send, a 'sensitive' scope)", outcome:"App verification, no security assessment", ev:"sourced"},
+    {case:"Read, modify or full mail access (restricted scopes)", outcome:"Verification + CASA security assessment, renewed every 12 months", ev:"sourced"}
+  ],
+  steps:[
+    {who:"you", title:"Create a Google Cloud project and enable the Gmail API", detail:"Free. Needs a Google account.", ev:"sourced"},
+    {who:"agent", title:"Pick the smallest scope set for your features", detail:"Map each feature to one scope. Drop anything you don't call; one restricted scope pulls the whole app into the strict track.", ev:"sourced"},
+    {who:"you", title:"Configure the consent screen", detail:"App name, support email, logo, homepage, privacy policy URL, authorized domain. Internal vs External audience is chosen here.", ev:"sourced"},
+    {who:"you", title:"Create a Web OAuth client", detail:"Add your redirect URL (for Composio: https://backend.composio.dev/api/v1/auth-apps/add). Copy client ID and secret.", ev:"sourced"},
+    {who:"you", title:"Test with up to 100 test users", detail:"Unverified apps show a warning screen and have a user cap. Fine for building, not for launch.", ev:"sourced"},
+    {who:"agent", title:"Draft the verification package", detail:"Scope justifications, demo video script, privacy policy checklist.", ev:"uncertain"},
+    {who:"provider", title:"Google reviews the app", detail:"Brand check, then scope review. Restricted scopes add a CASA assessment by a Google-approved lab.", ev:"sourced"}
+  ],
+  blockers:[
+    {text:"Composio's Gmail form pre-selects https://mail.google.com/ (full mail access), a restricted scope. Keeping the default puts you on the hardest track.", ev:"tested"},
+    {text:"gmail.readonly, gmail.modify, gmail.compose and gmail.metadata are all restricted. There is no 'light' way to read mail.", ev:"sourced"},
+    {text:"CASA assessment costs a few hundred to a few thousand dollars a year, from third-party estimates.", ev:"sourced"},
+    {text:"Scopes in your code must match the consent screen, or users keep seeing the unverified-app warning.", ev:"sourced"},
+    {text:"Exact review times for restricted scopes are not published by Google.", ev:"uncertain"}
+  ],
+  agent_can:["Map your features to the minimum scopes","Flag restricted scopes before you submit","Draft scope justifications and the demo video script","Check your privacy policy covers Google's required disclosures"],
+  you_must:["Own the Google Cloud project and domain","Record the demo video","Hire and work with a CASA assessor (restricted scopes)","Click submit and answer Google's emails"],
+  unverified:["Review times above are ranges from developer reports, not Google commitments","Assessment cost depends on the lab and tier"],
+  sources:[
+    {t:"Composio dashboard, Gmail auth config (walked through Oct 2026)", u:"https://dashboard.composio.dev"},
+    {t:"Composio: Gmail scope tiers and CASA", u:"https://composio.dev/content/ship-gmail-integration-in-minutes"},
+    {t:"Nango: Google security review", u:"https://nango.dev/docs/api-integrations/google-shared/google-security-review"},
+    {t:"Composio: Google OAuth setup guide", u:"https://composio.dev/auth/googleapps"}
+  ]
+},
+aircall:{
+  app:"Aircall", provider:"Aircall", difficulty:"partner",
+  verdict:"No self-serve console. You apply as a technology partner, and Aircall staff create your dev and production OAuth apps by hand over email. The work is small; the waiting is most of the timeline.",
+  hands_on:{text:"2–4 days", days:3},
+  waiting:{best:"2 weeks", normal:"6–8 weeks", worst:"3+ months", days:49},
+  start_now:"Apply to the partner program and write your plan doc before you write code. Nothing moves until both are approved.",
+  cases:[
+    {case:"One Aircall account only (private app, API key)", outcome:"No review, no partnership needed", ev:"sourced"},
+    {case:"Many Aircall customers (public app, OAuth)", outcome:"Partner approval, plan review, manual app creation, launch review", ev:"tested"},
+    {case:"Public marketplace listing", outcome:"Only after 10 customers use the integration", ev:"sourced"}
+  ],
+  steps:[
+    {who:"you", title:"Apply to the Technology Partner Program", detail:"Requires a live product with a company website.", ev:"sourced"},
+    {who:"agent", title:"Draft the integration plan document", detail:"What you're building and the main features. Aircall reviews it before creating your dev account.", ev:"tested"},
+    {who:"you", title:"Send a fresh email and phone number for the dev account", detail:"The email must not belong to any existing Aircall account. Trial lasts 4 months, extendable.", ev:"tested"},
+    {who:"you", title:"Request the development OAuth app", detail:"Email your redirect URIs (up to 5). Localhost is rejected: use ngrok or a staging server.", ev:"tested"},
+    {who:"provider", title:"Aircall creates the app and shares credentials", detail:"Took 3 days for dev in our run. Credentials arrive through a secure share link.", ev:"tested"},
+    {who:"you", title:"Request the production OAuth app", detail:"Separate request with production redirect and install URIs.", ev:"tested"},
+    {who:"provider", title:"Launch review and in-product publishing", detail:"Publishing inside Aircall's dashboard is mandatory so admins can uninstall.", ev:"tested"}
+  ],
+  blockers:[
+    {text:"Plan document is a hard gate. The dev account is not created until it's approved.", ev:"tested"},
+    {text:"Every follow-up email moves your request to the back of the queue. Wait at least 3 business days.", ev:"tested"},
+    {text:"Status changes are silent. Our dev account was activated without notice and later suspended without a reason (fixed same day on request).", ev:"tested"},
+    {text:"Going quiet is also risky: Aircall can decommission assets if you stop replying. They expect completion within 6 months.", ev:"sourced"},
+    {text:"Webhooks are verified with a token in the payload, not a signature header. There is no revoke endpoint.", ev:"tested"},
+    {text:"Rate limit is 120 requests per minute per company.", ev:"tested"}
+  ],
+  agent_can:["Draft the partner application and plan doc","Draft each email with the exact fields Aircall asks for","Track who owes the next reply and when to follow up","List redirect URIs that Aircall will accept"],
+  you_must:["Be approved as a technology partner","Send every email from your company address","Run a public tunnel or staging server","Fill the publishing form and assets"],
+  unverified:["Waiting times come from one real integration (Aug–Oct 2026) plus Aircall's stated review windows; other teams may move faster"],
+  sources:[
+    {t:"First-hand: a CRM's Aircall integration email thread, Aug 31 – Oct 19 2026", u:""},
+    {t:"Aircall: Build & Launch", u:"https://developer.aircall.io/docs/launch-process"},
+    {t:"Aircall: How to publish an app", u:"https://developer.aircall.io/build/"},
+    {t:"Aircall: AI ecosystem developer guide", u:"https://aircall.io/en-au/blog/tech/ai-ecosystem-developer-guide/"}
+  ]
+},
+slack:{
+  app:"Slack", provider:"Slack", difficulty:"review",
+  verdict:"Instant for your own workspace. Distributing to other workspaces is mostly self-serve. Listing in the Slack Marketplace is the slow part: the longest review queue of the four.",
+  hands_on:{text:"1–3 hours", days:0.2},
+  waiting:{best:"Same day", normal:"Same day (unlisted)", worst:"~12 weeks (Marketplace)", days:1},
+  start_now:"If you need a Marketplace listing at launch, submit as early as possible. A rejected or broken submission resets your place in the queue.",
+  cases:[
+    {case:"Your own workspace", outcome:"Works immediately, no review", ev:"sourced"},
+    {case:"Other workspaces, unlisted", outcome:"Turn on public distribution; no Marketplace review", ev:"uncertain"},
+    {case:"Listed in Slack Marketplace", outcome:"Preliminary review (up to 10 business days) + functional review (up to 10 weeks)", ev:"sourced"}
+  ],
+  steps:[
+    {who:"you", title:"Create the app at api.slack.com/apps", detail:"From scratch or from a manifest.", ev:"sourced"},
+    {who:"agent", title:"Write the app manifest with minimal scopes", detail:"Scopes are hard to change after listing.", ev:"sourced"},
+    {who:"you", title:"Add the redirect URL and install to your workspace", detail:"Client ID and secret are available right away.", ev:"sourced"},
+    {who:"you", title:"Enable public distribution if other workspaces need it", detail:"Requires HTTPS redirect URLs.", ev:"uncertain"},
+    {who:"provider", title:"Marketplace review (optional)", detail:"Slack tests the app themselves; you must give working credentials for your own service.", ev:"sourced"}
+  ],
+  blockers:[
+    {text:"Once listed, scopes and config are locked. Each later change goes through review again, up to 6 weeks.", ev:"sourced"},
+    {text:"A returned submission loses its place in the queue.", ev:"sourced"},
+    {text:"Reviewers need a working test account on your product, not just Slack.", ev:"sourced"},
+    {text:"Some scopes are not accepted in the Marketplace at all.", ev:"sourced"}
+  ],
+  agent_can:["Generate the manifest from your features","Pre-check the Marketplace submission checklist","Draft listing copy and the security questionnaire answers"],
+  you_must:["Own the Slack app and a test workspace","Provide reviewer credentials for your product","Submit and respond to review feedback"],
+  unverified:["Unlisted public distribution rules were not re-checked this session","Review durations are maximums from a third-party summary, not averages"],
+  sources:[
+    {t:"Slack Marketplace review guide", u:"https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide"},
+    {t:"WorkOS: OAuth app approval on Slack, Microsoft, Atlassian", u:"https://workos.com/blog/oauth-app-approval-slack-microsoft-atlassian"},
+    {t:"Slack: Marketplace review FAQ", u:"https://slack.com/blog/news/slack-app-directory-review-process"}
+  ]
+},
+notion:{
+  app:"Notion", provider:"Notion", difficulty:"self",
+  verdict:"The easiest of the four. A public integration gives you OAuth credentials as soon as you fill in a few URLs. Sources disagree on whether a security review is needed before publishing.",
+  hands_on:{text:"30–60 minutes", days:0.05},
+  waiting:{best:"None", normal:"None to unclear", worst:"Unknown", days:0.5},
+  start_now:"Low risk to wait. Have a privacy policy, terms page and support email ready before you start.",
+  cases:[
+    {case:"Your own workspace (internal integration)", outcome:"Token-based, no OAuth, no review", ev:"sourced"},
+    {case:"Any Notion workspace (public integration)", outcome:"OAuth client issued on save", ev:"sourced"},
+    {case:"Security review before publishing", outcome:"Sources conflict; not confirmed", ev:"uncertain"}
+  ],
+  steps:[
+    {who:"you", title:"Create a new integration and choose Public", detail:"From your Notion integrations dashboard.", ev:"sourced"},
+    {who:"you", title:"Fill website, privacy policy, terms and support email", detail:"Needed before the client ID and secret appear.", ev:"sourced"},
+    {who:"agent", title:"Choose capabilities", detail:"Notion uses capability toggles (read, update, insert content) instead of OAuth scopes.", ev:"sourced"},
+    {who:"you", title:"Add your redirect URL and copy credentials", detail:"Users pick which pages to share during consent.", ev:"sourced"}
+  ],
+  blockers:[
+    {text:"One source says public integrations need a Notion security review; a hands-on write-up got credentials immediately with placeholder URLs.", ev:"uncertain"},
+    {text:"Users choose pages at consent time. Your agent sees nothing the user didn't share.", ev:"sourced"}
+  ],
+  agent_can:["Pick the minimum capabilities for your features","Check your policy and terms URLs exist"],
+  you_must:["Own the Notion workspace","Host a privacy policy and terms page"],
+  unverified:["Whether Notion reviews public integrations before they can be used widely"],
+  sources:[
+    {t:"Notion: Authorization", u:"https://developers.notion.com/reference/authorization"},
+    {t:"n8n: Notion credentials", u:"https://docs.n8n.io/integrations/builtin/credentials/notion/"},
+    {t:"Classmethod: trying a Notion public integration", u:"https://dev.classmethod.jp/articles/try-notion-api-with-public-integration/"}
+  ]
+}};
+
+/* ---------- design system pieces (shadcn/ui class recipes) ---------- */
+const I = {
+  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  arrow:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  bot:'<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  ext:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  loader:'<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  key:'<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
+  slash:'<path d="m9 18 6-6-6-6"/>'
+};
+const icon = (n, c = "size-4") => `<svg class="${c} shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const B = {
+  base:"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  primary:"bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2",
+  outline:"border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2",
+  outlineSm:"border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs",
+  ghostSm:"hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs",
+  iconBtn:"hover:bg-accent hover:text-accent-foreground h-8 w-8"
+};
+const badge = "inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors whitespace-nowrap";
+const card = "rounded-xl border bg-card text-card-foreground shadow";
+const alertBox = "relative w-full rounded-lg border px-4 py-3 text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 items-start";
+
+const LEVELS = [
+  {n:1, key:"self",    name:"Self-serve",     desc:"Credentials in minutes. No provider review for the common case."},
+  {n:2, key:"review",  name:"Review to list", desc:"Works right away. Review only if you want a public listing."},
+  {n:3, key:"audit",   name:"Security audit", desc:"Verification, plus a paid third-party assessment for some permissions."},
+  {n:4, key:"partner", name:"Partner-gated",  desc:"A person at the provider must approve you and create the app."}
+];
+const levelOf = k => (LEVELS.find(l => l.key === k) || LEVELS[1]);
+const EVL = {tested:"Tested", sourced:"Sourced", uncertain:"Unverified"};
+const EVC = {tested:"border-l1/30 bg-l1/10 text-l1", sourced:"border-l2/30 bg-l2/10 text-l2", uncertain:"border-l3/30 bg-l3/10 text-l3"};
+const WHO = {agent:"Agent", you:"You", provider:"Provider"};
+const WHOC = {agent:"bg-primary text-primary-foreground border-transparent", you:"bg-secondary text-secondary-foreground border-transparent", provider:"text-foreground"};
+const CHECKED = "2026-10-20";
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = d => { const [y,m,dd] = d.split("-").map(Number); return `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].at(m-1)} ${dd}, ${y}`; };
+const ev = e => { const k = EVL[e] ? e : "uncertain"; return `<span class="${badge} ${EVC[k]}">${EVL[k]}</span>`; };
+const meter = (n, h = "h-1.5") => `<div class="flex w-full gap-1" role="img" aria-label="Difficulty level ${n} of 4">${[1,2,3,4].map(i => `<span class="${h} flex-1 rounded-full ${i <= n ? `bg-l${n}` : "bg-muted"}"></span>`).join("")}</div>`;
+const levelBadge = n => `<span class="${badge} border-l${n}/30 bg-l${n}/10 text-l${n}">Level ${n} · ${LEVELS.at(n-1).name}</span>`;
+const freshness = g => g._generated
+  ? `<span class="${badge} text-muted-foreground">${icon("clock","size-3")}Generated just now</span>`
+  : `<span class="tip ${badge} text-muted-foreground" tabindex="0">${icon("refresh","size-3")}Last updated ${fmtDate(g.checked || CHECKED)}<span class="tip-c rounded-md bg-primary px-3 py-1.5 text-xs font-normal text-primary-foreground">Updated by hand on this date. A weekly re-crawl of provider docs is specified but not running in this prototype.</span></span>`;
+
+const view = document.getElementById("view");
+document.getElementById("logo").innerHTML = icon("key","size-3.5");
+let generated = null;
+const RM = matchMedia("(prefers-reduced-motion: reduce)");
+const stagger = (els, max = 10) => [...els].slice(0, max).forEach((el, i) => { el.classList.remove("enter"); el.style.setProperty("--i", i); void el.offsetWidth; el.classList.add("enter"); });
+const openLayer = (...els) => requestAnimationFrame(() => requestAnimationFrame(() => els.forEach(e => e && e.setAttribute("data-open", ""))));
+const closeLayer = (root, els, ms) => { els.forEach(e => { if (e) { e.removeAttribute("data-open"); e.setAttribute("data-closing", ""); } }); setTimeout(() => { root.innerHTML = ""; }, RM.matches ? 0 : ms); };
+const chats = {};
+
+/* ---------- catalog: every app we list; only LIB entries have a reviewed guide ---------- */
+const CATALOG = [
+  {key:"gmail", app:"Gmail", provider:"Google", cat:"Email"},
+  {key:"aircall", app:"Aircall", provider:"Aircall", cat:"Calling"},
+  {key:"slack", app:"Slack", provider:"Slack", cat:"Messaging"},
+  {key:"notion", app:"Notion", provider:"Notion", cat:"Docs"},
+  {key:"linear", app:"Linear", provider:"Linear", cat:"Issue tracking"},
+  {key:"jira", app:"Jira", provider:"Atlassian", cat:"Issue tracking"},
+  {key:"confluence", app:"Confluence", provider:"Atlassian", cat:"Docs"},
+  {key:"github", app:"GitHub", provider:"GitHub", cat:"Code"},
+  {key:"hubspot", app:"HubSpot", provider:"HubSpot", cat:"CRM"},
+  {key:"salesforce", app:"Salesforce", provider:"Salesforce", cat:"CRM"},
+  {key:"zoom", app:"Zoom", provider:"Zoom", cat:"Meetings"},
+  {key:"calendly", app:"Calendly", provider:"Calendly", cat:"Scheduling"},
+  {key:"googlecalendar", app:"Google Calendar", provider:"Google", cat:"Calendar"},
+  {key:"googledrive", app:"Google Drive", provider:"Google", cat:"Files"},
+  {key:"outlook", app:"Outlook", provider:"Microsoft", cat:"Email"},
+  {key:"teams", app:"Microsoft Teams", provider:"Microsoft", cat:"Messaging"},
+  {key:"asana", app:"Asana", provider:"Asana", cat:"Projects"},
+  {key:"zendesk", app:"Zendesk", provider:"Zendesk", cat:"Support"},
+  {key:"dropbox", app:"Dropbox", provider:"Dropbox", cat:"Files"},
+  {key:"airtable", app:"Airtable", provider:"Airtable", cat:"Database"}
+];
+let libFilter = 0, libQuery = "", showAll = false;
+const tile = name => `<span class="grid size-9 shrink-0 place-items-center rounded-md border bg-muted text-sm font-semibold text-foreground" aria-hidden="true">${esc(name.split(/\s+/).map(w => w[0]).join("").slice(0,2).toUpperCase())}</span>`;
+
+function renderList(reveal = false){
+  const list = document.getElementById("lib-list"); if (!list) return;
+  const q = libQuery.toLowerCase();
+  const matches = CATALOG.filter(c => {
+    const g = LIB[c.key];
+    if (q && !`${c.app} ${c.provider} ${c.cat}`.toLowerCase().includes(q)) return false;
+    if (!libFilter) return true;
+    if (libFilter === 5) return !g;
+    return g && levelOf(g.difficulty).n === libFilter;
+  });
+  const collapsed = !showAll && !q && !libFilter;
+  const rows = collapsed ? matches.filter(c => LIB[c.key]) : matches;
+  list.innerHTML = rows.map(c => {
+    const g = LIB[c.key];
+    if (g) { const l = levelOf(g.difficulty); return `
+      <li><button type="button" data-key="${c.key}" class="lib flex w-full min-w-0 items-start gap-4 p-4 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring sm:items-center">
+        ${tile(c.app)}
+        <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+          <div class="flex shrink-0 flex-col gap-1.5 sm:w-48">
+            <span class="flex items-baseline gap-2"><span class="font-semibold tracking-tight">${esc(c.app)}</span><span class="text-xs text-muted-foreground">${esc(c.cat)}</span></span>
+            <div class="flex items-center gap-2"><div class="w-14 shrink-0">${meter(l.n)}</div><span class="text-xs font-medium text-l${l.n}">Level ${l.n} · ${l.name}</span></div>
+          </div>
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <p class="text-sm text-muted-foreground">${esc(g.verdict.split(". ")[0])}.</p>
+            <div class="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span class="inline-flex items-center gap-1.5">${icon("clock","size-3.5")}Work ${esc(g.hands_on.text)} · Wait ${esc(g.waiting.normal)}</span>
+              <span>Last updated ${fmtDate(g.checked || CHECKED)}</span>
+            </div>
+          </div>
+        </div>
+        <span class="hidden self-center text-muted-foreground sm:block">${icon("slash")}</span>
+      </button></li>`; }
+    return `
+      <li class="unrated flex items-start gap-4 p-4 sm:items-center">
+        ${tile(c.app)}
+        <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+          <div class="flex shrink-0 flex-col gap-1.5 sm:w-48">
+            <span class="flex items-baseline gap-2"><span class="font-semibold tracking-tight">${esc(c.app)}</span><span class="text-xs text-muted-foreground">${esc(c.cat)}</span></span>
+            <div class="flex items-center gap-2"><div class="w-14 shrink-0"><div class="flex w-full gap-1">${[1,2,3,4].map(() => `<span class="h-1.5 flex-1 rounded-full bg-muted"></span>`).join("")}</div></div><span class="text-xs font-medium text-muted-foreground">Not rated yet</span></div>
+          </div>
+          <p class="min-w-0 flex-1 text-sm text-muted-foreground">No reviewed guide yet. The agent can write a live draft${c.provider !== c.app ? ` (provider: ${esc(c.provider)})` : ""}.</p>
+        </div>
+        <button type="button" data-gen="${esc(c.app)}" class="gen-row ${B.base} ${B.outlineSm} shrink-0 self-center">Generate guide</button>
+      </li>`;
+  }).join("") || `<li class="flex flex-col items-center gap-2 p-10 text-center"><span class="font-medium">No apps match</span><span class="text-sm text-muted-foreground">Describe the app in the search box at the top and the agent writes a guide.</span></li>`;
+  if (reveal) stagger(list.querySelectorAll("li.unrated"), 20);
+  list.querySelectorAll(".lib").forEach(b => b.onclick = () => { location.hash = b.dataset.key; });
+  list.querySelectorAll(".gen-row").forEach(b => b.onclick = () => {
+    const i = document.getElementById("g-q");
+    i.value = `${b.dataset.gen}: what does it take to get a production OAuth app approved for my customers?`;
+    window.scrollTo(0, 0);
+    document.getElementById("gen-form").requestSubmit();
+  });
+  const n = document.getElementById("lib-count");
+  if (n) n.textContent = `${rows.length} of ${CATALOG.length} apps · ${Object.keys(LIB).length} reviewed`;
+  const more = document.getElementById("show-all");
+  if (more) {
+    const hidden = matches.length - rows.length;
+    more.hidden = !(collapsed ? hidden > 0 : (showAll && !q && !libFilter));
+    more.innerHTML = collapsed ? `Show all ${CATALOG.length} apps ${icon("chev","size-3.5")}` : `Show reviewed only ${icon("chev","size-3.5 rotate-180")}`;
+  }
+}
+
+/* ---------- home ---------- */
+function renderHome(){
+  view.innerHTML = `
+  <section class="flex flex-col items-center gap-5 py-10 text-center">
+    <h1 class="max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">How long until your OAuth app is approved?</h1>
+    <p class="max-w-lg text-sm text-muted-foreground sm:text-base">Name an app and what your agent should do in it. You get the difficulty, the work time, the waiting time, and what blocks approval.</p>
+    <form id="gen-form" class="flex w-full max-w-2xl items-center gap-2 rounded-lg border border-input bg-background p-1.5 pl-3 shadow-sm focus-within:ring-1 focus-within:ring-ring">
+      <span class="text-muted-foreground">${icon("search")}</span>
+      <label for="g-q" class="sr-only">Which app, and what should your agent do in it?</label>
+      <input id="g-q" required autocomplete="off" class="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Which app, and what should your agent do in it?">
+      <button id="g-go" type="submit" class="${B.base} ${B.primary}">Get guide ${icon("arrow")}</button>
+    </form>
+    <div class="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+      <span>Try</span>
+      ${[["Calendly","Calendly: read upcoming meetings and book new ones for my customers"],["Zoom","Zoom: create meetings and pull transcripts for my customers"],["Linear","Linear: create and update issues for my customers"]]
+        .map(([n,q]) => `<button type="button" class="try ${badge} cursor-pointer text-foreground hover:bg-accent" data-q="${esc(q)}">${n}</button>`).join("")}
+    </div>
+    <div id="g-status" class="w-full max-w-2xl text-left"></div>
+  </section>
+
+
+  <section class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <h2 class="text-lg font-semibold tracking-tight">Apps</h2>
+      <p class="text-sm text-muted-foreground">Reviewed guides show their difficulty level. For the rest, the agent writes a live draft.</p>
+    </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="relative w-full sm:max-w-xs">
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icon("search")}</span>
+        <label for="lib-q" class="sr-only">Filter apps</label>
+        <input id="lib-q" autocomplete="off" value="${esc(libQuery)}" placeholder="Filter apps…" class="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+      </div>
+      <div class="overflow-x-auto"><div role="tablist" class="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+        ${[[0,"All"],[1,"L1"],[2,"L2"],[3,"L3"],[4,"L4"],[5,"Not rated"]].map(([n,t]) => `<button role="tab" type="button" data-f="${n}" data-state="${libFilter===n?"active":"inactive"}" aria-selected="${libFilter===n}" ${n>=1&&n<=4?`title="Level ${n} · ${LEVELS.at(n-1).name}"`:""} class="inline-flex h-7 items-center whitespace-nowrap rounded-md px-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">${t}</button>`).join("")}
+      </div></div>
+    </div>
+    <ul id="lib-list" class="${card} divide-y overflow-hidden"></ul>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" id="show-all" class="${B.base} ${B.outline}"></button>
+        <button type="button" id="new-app" class="${B.base} ${B.primary}">${icon("bot")}Start a guide for an app not listed</button>
+      </div>
+      <p id="lib-count" class="tnum text-xs text-muted-foreground"></p>
+    </div>
+  </section>`;
+  view.querySelectorAll("[data-f]").forEach(b => b.onclick = () => {
+    libFilter = Number(b.dataset.f);
+    view.querySelectorAll("[data-f]").forEach(x => { const on = x === b; x.dataset.state = on ? "active" : "inactive"; x.setAttribute("aria-selected", on); });
+    renderList();
+  });
+  document.getElementById("lib-q").oninput = e => { libQuery = e.target.value; renderList(); };
+  document.getElementById("show-all").onclick = () => { showAll = !showAll; renderList(showAll); };
+  document.getElementById("new-app").onclick = openNewApp;
+  renderList();
+  stagger(view.children);
+  view.querySelectorAll(".try").forEach(b => b.onclick = () => { const i = document.getElementById("g-q"); i.value = b.dataset.q; i.focus(); });
+  document.getElementById("gen-form").onsubmit = onGenerate;
+  setFab(null);
+}
+
+/* ---------- dialog: start a guide for an unlisted app ---------- */
+function openNewApp(){
+  const root = document.getElementById("sheet-root");
+  root.innerHTML = `
+  <div id="dlg-overlay" class="overlay fixed inset-0 z-50 bg-black/60"></div>
+  <div id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title" class="dlg fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-32px)] max-w-lg gap-4 rounded-xl border bg-background p-6 shadow-lg">
+    <div class="flex flex-col gap-1.5">
+      <h2 id="dlg-title" class="text-lg font-semibold leading-none tracking-tight">Start a guide for an app not listed</h2>
+      <p class="text-sm text-muted-foreground">The agent researches the app and writes a live draft. Every line is marked Unverified until a person reviews it.</p>
+    </div>
+    <form id="dlg-form" class="grid gap-4">
+      <div class="grid gap-2"><label for="dlg-app" class="text-sm font-medium leading-none">App name or website</label>
+        <input id="dlg-app" required autocomplete="off" placeholder="Pipedrive, intercom.com…" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></div>
+      <div class="grid gap-2"><label for="dlg-do" class="text-sm font-medium leading-none">What your agent should do in it</label>
+        <textarea id="dlg-do" rows="2" placeholder="Read deals and update their stage" class="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea></div>
+      <div class="grid gap-2"><label for="dlg-who" class="text-sm font-medium leading-none">Who connects it</label>
+        <select id="dlg-who" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          <option value="for my customers">My customers (public app)</option>
+          <option value="for my own company only">Only my company (internal)</option>
+        </select></div>
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" id="dlg-cancel" class="${B.base} ${B.outline}">Cancel</button>
+        <button type="submit" class="${B.base} ${B.primary}">Start guide ${icon("arrow")}</button>
+      </div>
+    </form>
+    <button type="button" id="dlg-x" class="${B.base} ${B.iconBtn} absolute right-3 top-3" aria-label="Close">${icon("x")}</button>
+  </div>`;
+  const dov = document.getElementById("dlg-overlay"), dlg = document.getElementById("dlg");
+  openLayer(dov, dlg);
+  const close = () => { document.removeEventListener("keydown", onKey); closeLayer(root, [dov, dlg], 150); };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  ["dlg-overlay","dlg-cancel","dlg-x"].forEach(id => document.getElementById(id).onclick = close);
+  document.getElementById("dlg-form").onsubmit = e => {
+    e.preventDefault();
+    const app = document.getElementById("dlg-app").value.trim();
+    const what = document.getElementById("dlg-do").value.trim();
+    const who = document.getElementById("dlg-who").value;
+    if (!app) return;
+    close();
+    document.getElementById("g-q").value = `${app}: ${what || "typical read and write access"}, ${who}`;
+    window.scrollTo(0, 0);
+    document.getElementById("gen-form").requestSubmit();
+  };
+  document.getElementById("dlg-app").focus();
+}
+
+/* ---------- guide ---------- */
+const TABS = [["steps","Steps"],["case","Your case"],["blockers","Blockers"],["roles","Who does what"],["sources","Sources"]];
+
+function renderGuide(g, key){
+  const l = levelOf(g.difficulty);
+  const total = (g.hands_on.days || 0) + (g.waiting.days || 0);
+  const workPct = total ? Math.max(1.5, (g.hands_on.days / total) * 100) : 50;
+  view.innerHTML = `
+  <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-muted-foreground">
+    <button type="button" id="crumb-home" class="transition-colors hover:text-foreground">Library</button>${icon("slash","size-3.5")}<span class="text-foreground">${esc(g.app)}</span>
+  </nav>
+
+  <header class="flex flex-col gap-3 pt-4">
+    <div class="flex flex-wrap items-center gap-2">${levelBadge(l.n)}${g._generated ? `<span class="${badge} border-transparent bg-secondary text-secondary-foreground">Live draft</span>` : `<span class="${badge} border-transparent bg-secondary text-secondary-foreground">Reviewed by hand</span>`}${freshness(g)}</div>
+    <h1 class="text-3xl font-semibold tracking-tight">${esc(g.app)} OAuth app</h1>
+    <p class="max-w-2xl text-muted-foreground">${esc(g.verdict)}</p>
+  </header>
+
+  <div class="flex flex-col gap-3 pt-6">
+    ${g._generated ? `<div role="alert" class="${alertBox} border-l3/40 text-l3">${icon("alert","size-4 mt-0.5")}<div class="font-medium leading-none tracking-tight">Live draft, not checked by a person</div><div class="col-start-2 text-sm opacity-90">The agent wrote this from its own knowledge, without live web search. Open the sources before you rely on any line.</div></div>` : ""}
+    <div role="note" class="${alertBox} bg-card">${icon("shield","size-4 mt-0.5")}<div class="font-medium leading-none tracking-tight">No credentials needed here</div><div class="col-start-2 text-sm text-muted-foreground">This guide and the agent never need your client secret. If you paste one into the chat, it is blocked before sending.</div></div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 pt-6 md:grid-cols-3">
+    <div class="${card} flex flex-col gap-4 p-5">
+      <div class="text-sm font-medium text-muted-foreground">Difficulty</div>
+      ${meter(l.n, "h-2.5")}
+      <div class="flex flex-col gap-1"><span class="text-2xl font-semibold tracking-tight text-l${l.n}">Level ${l.n} of 4</span><span class="font-medium">${l.name}</span></div>
+      <p class="text-sm text-muted-foreground">${l.desc}</p>
+    </div>
+    <div class="${card} flex flex-col gap-4 p-5 md:col-span-2">
+      <div class="text-sm font-medium text-muted-foreground">Work vs waiting · normal case</div>
+      <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label="Your work compared with waiting time">
+        <div class="h-full bg-primary" style="width:${workPct}%"></div><div class="h-full flex-1 bg-l${l.n}/70"></div>
+      </div>
+      <div class="tnum grid grid-cols-2 gap-4">
+        <div class="flex flex-col gap-0.5"><span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span class="size-2 rounded-full bg-primary"></span>Your work</span><span class="text-lg font-semibold">${esc(g.hands_on.text)}</span></div>
+        <div class="flex flex-col gap-0.5"><span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span class="size-2 rounded-full bg-l${l.n}/70"></span>Waiting on ${esc(g.provider)}</span><span class="text-lg font-semibold">${esc(g.waiting.normal)}</span></div>
+      </div>
+      <div class="overflow-x-auto"><table class="tnum w-full caption-bottom text-sm">
+        <thead><tr class="border-b"><th class="h-9 px-2 text-left align-middle font-medium text-muted-foreground">Waiting</th><th class="h-9 px-2 text-left font-medium text-muted-foreground">Best</th><th class="h-9 px-2 text-left font-medium text-muted-foreground">Normal</th><th class="h-9 px-2 text-left font-medium text-muted-foreground">Worst</th></tr></thead>
+        <tbody><tr><td class="p-2 text-muted-foreground">Approval</td><td class="p-2">${esc(g.waiting.best)}</td><td class="p-2 font-medium">${esc(g.waiting.normal)}</td><td class="p-2">${esc(g.waiting.worst)}</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div role="note" class="${alertBox} mt-3 border-l${l.n}/40 bg-l${l.n}/5">${icon("clock","size-4 mt-0.5 text-l"+l.n)}<div class="font-medium leading-none tracking-tight">Start now</div><div class="col-start-2 text-sm text-muted-foreground">${esc(g.start_now)}</div></div>
+
+  <div class="flex flex-col gap-4 pt-8">
+    <div class="overflow-x-auto"><div role="tablist" class="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground">
+      ${TABS.map(([k,n],i) => `<button role="tab" type="button" data-tab="${k}" data-state="${i?"inactive":"active"}" aria-selected="${!i}" class="inline-flex h-7 items-center whitespace-nowrap rounded-md px-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">${n}</button>`).join("")}
+    </div></div>
+
+    <div data-panel="steps" class="${card}">
+      <ol class="divide-y">${(g.steps||[]).map((s,i) => `
+        <li class="flex gap-4 p-4">
+          <span class="tnum grid size-7 shrink-0 place-items-center rounded-full border text-xs font-medium text-muted-foreground">${i+1}</span>
+          <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div class="flex flex-wrap items-center gap-2"><span class="font-medium">${esc(s.title)}</span><span class="${badge} ${WHOC[s.who]||WHOC.you}">${WHO[s.who]||"You"}</span>${ev(s.ev)}</div>
+            <p class="text-sm text-muted-foreground">${esc(s.detail)}</p>
+          </div>
+          <button type="button" class="ask-step ${B.base} ${B.ghostSm} self-start" data-i="${i}">${icon("msg","size-3.5")}<span class="hidden sm:inline">Ask</span></button>
+        </li>`).join("")}</ol>
+    </div>
+
+    <div data-panel="case" hidden class="${card} overflow-x-auto">
+      <table class="w-full caption-bottom text-sm">
+        <thead><tr class="border-b"><th class="h-10 px-4 text-left font-medium text-muted-foreground">If you…</th><th class="h-10 px-4 text-left font-medium text-muted-foreground">Then</th><th class="h-10 px-4"></th></tr></thead>
+        <tbody>${(g.cases||[]).map(c => `<tr class="border-b transition-colors last:border-0 hover:bg-muted/50"><td class="p-4 align-top">${esc(c.case)}</td><td class="p-4 align-top text-muted-foreground">${esc(c.outcome)}</td><td class="p-4 align-top text-right">${ev(c.ev)}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>
+
+    <div data-panel="blockers" hidden class="flex flex-col gap-2">
+      ${(g.blockers||[]).map(b => `<div class="${alertBox} bg-card">${icon("alert","size-4 mt-0.5 text-l3")}<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4"><span>${esc(b.text)}</span>${ev(b.ev)}</div></div>`).join("")}
+    </div>
+
+    <div data-panel="roles" hidden class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="${card} flex flex-col gap-3 p-5"><div class="flex items-center gap-2 font-semibold tracking-tight">${icon("bot")}Agent can do</div><ul class="flex flex-col gap-2 text-sm">${(g.agent_can||[]).map(x=>`<li class="flex gap-2">${icon("check","size-4 mt-0.5 text-l1")}<span>${esc(x)}</span></li>`).join("")}</ul></div>
+      <div class="${card} flex flex-col gap-3 p-5"><div class="flex items-center gap-2 font-semibold tracking-tight">${icon("key")}You must do</div><ul class="flex flex-col gap-2 text-sm">${(g.you_must||[]).map(x=>`<li class="flex gap-2"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-foreground"></span><span>${esc(x)}</span></li>`).join("")}</ul></div>
+    </div>
+
+    <div data-panel="sources" hidden class="grid grid-cols-1 gap-3">
+      <div class="${card} flex flex-col gap-3 p-5"><div class="font-semibold tracking-tight">Not confirmed</div>
+        <ul class="flex flex-col gap-2 text-sm">${(g.unverified||[]).map(x=>`<li class="flex items-start gap-2">${ev("uncertain")}<span class="min-w-0">${esc(x)}</span></li>`).join("") || `<li class="text-muted-foreground">Nothing flagged.</li>`}</ul></div>
+      <div class="${card} flex flex-col gap-1 p-2">${(g.sources||[]).map(s => s.u
+        ? `<a href="${esc(s.u)}" target="_blank" rel="noopener" class="flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"><span class="min-w-0 break-words">${esc(s.t)}</span>${icon("ext","size-3.5 text-muted-foreground")}</a>`
+        : `<div class="flex items-center justify-between gap-3 px-3 py-2 text-sm"><span class="min-w-0">${esc(s.t)}</span><span class="${badge} ${EVC.tested}">First-hand</span></div>`).join("")}</div>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-2 pt-8">
+    <button type="button" id="ask-agent" class="${B.base} ${B.primary}">${icon("msg")}Ask the agent</button>
+    <button type="button" id="copy-md" class="${B.base} ${B.outline}">${icon("copy")}Copy as Markdown</button>
+    ${g._generated ? "" : `<button type="button" id="copy-link" class="${B.base} ${B.outline}">${icon("link")}Copy link</button>`}
+  </div>`;
+
+  document.getElementById("crumb-home").onclick = goHome;
+  view.querySelectorAll("[data-tab]").forEach(t => t.onclick = () => {
+    view.querySelectorAll("[data-tab]").forEach(x => { const on = x === t; x.dataset.state = on ? "active" : "inactive"; x.setAttribute("aria-selected", on); });
+    view.querySelectorAll("[data-panel]").forEach(p => { const show = p.dataset.panel === t.dataset.tab; if (show && p.hidden) { p.classList.remove("fade"); void p.offsetWidth; p.classList.add("fade"); } p.hidden = !show; });
+  });
+  view.querySelectorAll(".ask-step").forEach(b => b.onclick = () => { const s = g.steps[Number(b.dataset.i)]; openChat(g, key, `I'm on step ${Number(b.dataset.i)+1}, "${s.title}". What do I need to get right here?`); });
+  document.getElementById("ask-agent").onclick = () => openChat(g, key);
+  document.getElementById("copy-md").onclick = () => copy(toMarkdown(g), "Markdown copied");
+  const cl = document.getElementById("copy-link");
+  if (cl) cl.onclick = () => copy(`#${key}`, `Copied #${key}. Add it to this page's link to share.`);
+  setFab(() => openChat(g, key));
+  window.scrollTo(0, 0);
+  stagger(view.children);
+}
+
+function toMarkdown(g){
+  const l = levelOf(g.difficulty), L = [];
+  L.push(`# ${g.app} OAuth app — setup & approval`);
+  if (g._generated) L.push(`> Live draft from the agent. Unverified.`);
+  L.push(`**Difficulty:** Level ${l.n} of 4 · ${l.name}`, ``, g.verdict, ``);
+  L.push(`**Your work:** ${g.hands_on.text}  `, `**Waiting:** best ${g.waiting.best} · normal ${g.waiting.normal} · worst ${g.waiting.worst}`, ``);
+  L.push(`**Start now:** ${g.start_now}`, ``, `## Your case`);
+  (g.cases||[]).forEach(c => L.push(`- ${c.case} → ${c.outcome} _(${EVL[c.ev]||"Unverified"})_`));
+  L.push(``, `## Steps`);
+  (g.steps||[]).forEach((s,i) => L.push(`${i+1}. **[${WHO[s.who]||"You"}] ${s.title}** — ${s.detail} _(${EVL[s.ev]||"Unverified"})_`));
+  L.push(``, `## Blockers`); (g.blockers||[]).forEach(b => L.push(`- ${b.text} _(${EVL[b.ev]||"Unverified"})_`));
+  L.push(``, `## Agent can do`); (g.agent_can||[]).forEach(x=>L.push(`- ${x}`));
+  L.push(``, `## You must do`); (g.you_must||[]).forEach(x=>L.push(`- ${x}`));
+  L.push(``, `## Not confirmed`); (g.unverified||[]).forEach(x=>L.push(`- ${x}`));
+  L.push(``, `## Sources`); (g.sources||[]).forEach(s=>L.push(`- ${s.u ? `[${s.t}](${s.u})` : s.t}`));
+  return L.join("\n");
+}
+
+/* ---------- toast + floating button ---------- */
+function toast(msg){
+  const r = document.getElementById("toast-root");
+  r.innerHTML = `<div role="status" class="toast pointer-events-auto rounded-lg border bg-background px-4 py-3 text-sm font-medium shadow-lg">${esc(msg)}</div>`;
+  clearTimeout(toast.t); clearTimeout(toast.u);
+  toast.t = setTimeout(() => { r.firstElementChild?.setAttribute("data-closing", ""); toast.u = setTimeout(() => r.innerHTML = "", RM.matches ? 0 : 170); }, 2600);
+}
+async function copy(text, msg){
+  try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast("Copy was blocked here. Select the text manually."); }
+}
+function setFab(fn){
+  let f = document.getElementById("fab");
+  if (!fn) { if (f) f.remove(); return; }
+  if (!f) {
+    f = document.createElement("button"); f.id = "fab"; f.type = "button";
+    f.className = `${B.base} bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 h-11 rounded-full px-5 fixed z-40`;
+    f.style.bottom = "calc(20px + env(safe-area-inset-bottom,0px))"; f.style.right = "max(20px, env(safe-area-inset-right,0px))";
+    f.innerHTML = `${icon("msg")}Ask agent`;
+    document.body.appendChild(f);
+  }
+  f.onclick = fn;
+}
+
+/* ---------- agent chat (Sheet + Message + Trace) ---------- */
+const SECRET = /(sk-[A-Za-z0-9_\-]{12,}|ghp_[A-Za-z0-9]{20,}|xox[abpr]-[A-Za-z0-9\-]{10,}|AIza[0-9A-Za-z_\-]{30,}|GOCSPX-[A-Za-z0-9_\-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY|client[_ ]?secret\s*[:=]\s*\S{8,}|\b[A-Za-z0-9_\-]{40,}\b)/i;
+
+function openChat(g, key, prefill = ""){
+  const root = document.getElementById("sheet-root");
+  const hist = chats[key] = chats[key] || [];
+  root.innerHTML = `
+  <div id="sheet-overlay" class="overlay fixed inset-0 z-50 bg-black/60"></div>
+  <aside id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" class="sheet fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l bg-background shadow-lg sm:max-w-md"
+    style="padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)">
+    <div class="flex items-start justify-between gap-4 border-b p-5">
+      <div class="flex flex-col gap-1">
+        <h2 id="sheet-title" class="flex items-center gap-2 text-lg font-semibold tracking-tight">${icon("bot")}Integration agent</h2>
+        <p class="text-sm text-muted-foreground">Ask about ${esc(g.app)} while you set it up. It answers from this guide and says when it isn't sure.</p>
+      </div>
+      <button type="button" id="sheet-close" class="${B.base} ${B.iconBtn}" aria-label="Close">${icon("x")}</button>
+    </div>
+    <div id="msgs" class="flex flex-1 flex-col gap-5 overflow-y-auto p-5"></div>
+    <form id="chat-form" class="flex flex-col gap-2 border-t p-4">
+      <div id="chat-warn"></div>
+      <div class="flex items-end gap-2">
+        <label for="chat-q" class="sr-only">Message the agent</label>
+        <textarea id="chat-q" rows="2" class="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" placeholder="Ask about a step, a scope, a blocker…"></textarea>
+        <button type="submit" id="chat-send" class="${B.base} bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 w-9" aria-label="Send">${icon("send")}</button>
+      </div>
+      <p class="flex items-center gap-1.5 text-xs text-muted-foreground">${icon("shield","size-3")}Never paste secrets. Anything that looks like a key is blocked.</p>
+    </form>
+  </aside>`;
+  const ov = document.getElementById("sheet-overlay"), sh = document.getElementById("sheet");
+  openLayer(ov, sh);
+  const close = () => { document.removeEventListener("keydown", onKey); closeLayer(root, [ov, sh], 210); };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  ov.onclick = close;
+  document.getElementById("sheet-close").onclick = close;
+  const ta = document.getElementById("chat-q");
+  ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("chat-form").requestSubmit(); } });
+  document.getElementById("chat-form").onsubmit = e => { e.preventDefault(); sendChat(g, key, ta.value); };
+  seen[key] = hist.length;
+  paintMsgs(g, key);
+  if (prefill) { ta.value = prefill; }
+  ta.focus();
+}
+
+const seen = {};
+function paintMsgs(g, key){
+  const box = document.getElementById("msgs"); if (!box) return;
+  const hist = chats[key];
+  const from = seen[key] ?? hist.length;
+  if (!hist.length) {
+    const ideas = [
+      g.blockers?.[0] ? "Which blocker is most likely to hit me?" : "What usually blocks approval?",
+      "What can I do this week to shorten the wait?",
+      "What if this is only for my own company?"
+    ];
+    box.innerHTML = `<div class="m-auto flex max-w-xs flex-col items-center gap-3 text-center">
+      <span class="grid size-10 place-items-center rounded-lg border bg-muted">${icon("bot","size-5")}</span>
+      <div class="flex flex-col gap-1"><span class="font-medium">Stuck on ${esc(g.app)}?</span><span class="text-sm text-muted-foreground">Ask about any step. The agent knows this guide and your progress in it.</span></div>
+      <div class="flex w-full flex-col gap-2">${ideas.map(q => `<button type="button" class="idea ${B.base} ${B.outlineSm} h-auto whitespace-normal py-2 text-left">${esc(q)}</button>`).join("")}</div>
+    </div>`;
+    box.querySelectorAll(".idea").forEach(b => b.onclick = () => sendChat(g, key, b.textContent));
+    stagger(box.firstElementChild.children);
+    return;
+  }
+  box.innerHTML = hist.map((m, i) => m.role === "user"
+    ? `<div class="${i >= from ? "enter " : ""}flex justify-end"><div class="max-w-[85%] whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">${esc(m.content)}</div></div>`
+    : `<div class="${i >= from ? "enter " : ""}flex gap-3"><span class="grid size-7 shrink-0 place-items-center rounded-full border bg-muted">${icon("bot","size-3.5")}</span>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          ${trace(m.trace, m.pending)}
+          <div class="whitespace-pre-wrap text-sm ${m.error ? "text-destructive" : ""}" data-msg="${i}">${m.content ? esc(m.content) : (m.pending ? `<span class="inline-flex items-center gap-2 text-muted-foreground">${icon("loader","size-3.5 spin")}Thinking…</span>` : "")}</div>
+        </div></div>`).join("");
+  box.scrollTop = box.scrollHeight;
+  seen[key] = hist.length;
+}
+
+function trace(steps = [], pending){
+  if (!steps.length) return "";
+  return `<details class="rounded-md border text-xs" ${pending ? "open" : ""}>
+    <summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-muted-foreground hover:text-foreground">${pending ? icon("loader","size-3.5 spin") : icon("check","size-3.5 text-l1")}<span class="flex-1">${pending ? "Researching" : `Researched · ${steps.length} steps`}</span><span class="chev transition-transform">${icon("chev","size-3.5")}</span></summary>
+    <ol class="flex flex-col gap-1.5 border-t px-3 py-2">${steps.map(s => `<li class="flex items-start gap-2 ${s.done ? "text-foreground" : "text-muted-foreground"}">${s.done ? icon("check","size-3.5 mt-px text-l1") : icon("loader","size-3.5 mt-px spin")}<span>${esc(s.t)}</span></li>`).join("")}</ol>
+  </details>`;
+}
+
+async function sendChat(g, key, text){
+  const q = String(text || "").trim();
+  const warn = document.getElementById("chat-warn");
+  if (!q) return;
+  if (SECRET.test(q)) {
+    warn.innerHTML = `<div role="alert" class="${alertBox} border-destructive/50 text-destructive">${icon("alert","size-4 mt-0.5")}<div class="font-medium leading-none">Not sent: this looks like a credential</div><div class="col-start-2 text-xs opacity-90">Remove the key or secret and ask again. The agent never needs it.</div></div>`;
+    return;
+  }
+  warn.innerHTML = "";
+  document.getElementById("chat-q").value = "";
+  const hist = chats[key];
+  hist.push({role:"user", content:q});
+  const steps = [
+    {t:`Read the ${g.app} guide: ${(g.steps||[]).length} steps, ${(g.blockers||[]).length} blockers`, done:false},
+    {t:`Checked the ${(g.sources||[]).length} sources the guide cites`, done:false},
+    {t:"Drafted an answer (model knowledge, no live web search)", done:false}
+  ];
+  const reply = {role:"assistant", content:"", trace:steps, pending:true};
+  hist.push(reply);
+  paintMsgs(g, key);
+  const tick = setInterval(() => { const n = steps.find(s => !s.done); if (n && n !== steps.at(-1)) { n.done = true; paintMsgs(g, key); } }, 700);
+  const send = document.getElementById("chat-send"); if (send) send.disabled = true;
+  try {
+    const sample = await claude.use("sample");
+    if (!sample) throw {message:"The agent isn't available in this view. Open the page in claude.ai while signed in."};
+    const ctx = `You are an integration agent helping a developer set up and get approval for their ${g.app} OAuth app, for an AI agent product.
+Guide (JSON; evidence labels: tested = done first-hand, sourced = in a linked source, uncertain = not confirmed):
+${JSON.stringify({...g, _generated: undefined})}
+
+Rules: answer in plain language, 2-6 short sentences, no headings. If the answer changes the difficulty level, work time or waiting time, say so. If the guide doesn't cover it, say that and give your best understanding starting with "Not verified:". Never claim something was tested unless the guide marks it tested. Never ask for or accept client secrets, tokens or passwords; if asked, tell them not to share it.`;
+    const msgs = [];
+    for (const m of hist) {
+      if (m.pending) continue;
+      if (m.error) { if (msgs.at(-1)?.role === "user") msgs.pop(); continue; }
+      msgs.push({role:m.role, content:m.content});
+    }
+    if (msgs[0]) msgs[0] = {role:"user", content:`${ctx}\n\nQuestion: ${msgs[0].content}`};
+    const res = await sample(msgs, { cache:false, onText: ({text}) => { reply.content = text; const el = document.querySelector(`[data-msg="${hist.indexOf(reply)}"]`); if (el) el.textContent = text; } });
+    reply.content = res.text;
+  } catch (err) {
+    reply.error = true;
+    reply.content = err && err.code === "not_granted" ? "Permission to ask Claude was declined, so the agent can't answer here."
+      : err && err.code === "rate_limited" ? "Too many requests right now. Wait a minute and ask again."
+      : (err && err.message) || "Something went wrong. Ask again.";
+  } finally {
+    clearInterval(tick); steps.forEach(s => s.done = true); reply.pending = false;
+    if (send) send.disabled = false;
+    paintMsgs(g, key);
+  }
+}
+
+/* ---------- live guide generation ---------- */
+const PROMPT = q => `You are an OAuth setup analyst. A developer building an AI agent wrote:
+"""${q}"""
+Identify the app their users will connect, what the agent must do in it, and whether it is for their own company only or for their customers (assume customers if not said).
+
+Write a setup-and-approval guide for creating that app's OAuth app and getting it approved for production.
+Start the verdict with your reading of their case (e.g. "For a public app that reads meetings, ...").
+Focus on what docs hide: hands-on time vs waiting time, review gates, scopes that trigger review, partner programs, paid-plan requirements, domain or policy requirements, and paths that avoid review.
+
+Difficulty levels: "self" = credentials in minutes, no review for the common case; "review" = works now, review only to list publicly; "audit" = verification plus a third-party security assessment for some permissions; "partner" = a person at the provider must approve and create the app.
+
+Evidence rules, strictly:
+- "sourced" only if you can name a specific official page URL you are confident exists. Put it in sources.
+- Otherwise "uncertain". Never use "tested".
+- If you don't know whether the app supports OAuth at all, say so in the verdict and in unverified.
+- Prefer ranges. Never invent precise review durations.
+
+Return ONLY JSON, no prose:
+{"app":string,"provider":string,"difficulty":"self"|"review"|"audit"|"partner","verdict":string (2 sentences),
+"hands_on":{"text":string,"days":number},"waiting":{"best":string,"normal":string,"worst":string,"days":number},
+"start_now":string,
+"cases":[{"case":string,"outcome":string,"ev":"sourced"|"uncertain"}] (2-3),
+"steps":[{"who":"agent"|"you"|"provider","title":string,"detail":string,"ev":"sourced"|"uncertain"}] (4-7),
+"blockers":[{"text":string,"ev":"sourced"|"uncertain"}] (2-5),
+"agent_can":[string],"you_must":[string],"unverified":[string],"sources":[{"t":string,"u":string}]}`;
+
+const STAGES = ["Finding the developer portal","Checking how OAuth apps are created","Looking for review and partner gates","Mapping your features to permissions","Estimating work vs waiting","Writing the guide"];
+
+async function onGenerate(e){
+  e.preventDefault();
+  const q = document.getElementById("g-q").value.trim();
+  const status = document.getElementById("g-status");
+  const btn = document.getElementById("g-go");
+  if (!q) return;
+  if (SECRET.test(q)) { status.innerHTML = `<div role="alert" class="${alertBox} border-destructive/50 text-destructive">${icon("alert","size-4 mt-0.5")}<div class="font-medium leading-none">Not sent: this looks like a credential</div><div class="col-start-2 text-xs opacity-90">Describe the app and what your agent does. No keys needed.</div></div>`; return; }
+  const words = q.toLowerCase().replace(/https?:\/\//g,"").replace(/www\./g,"").split(/[^a-z0-9]+/);
+  const hit = Object.keys(LIB).find(k => words.includes(k));
+  if (hit) { location.hash = hit; return; }
+
+  btn.disabled = true;
+  let stage = 0, chars = 0;
+  status.innerHTML = `<div class="${card} enter flex flex-col gap-4 p-5">
+      <div class="flex items-center justify-between gap-3"><span class="font-semibold tracking-tight">Researching</span><span id="gen-chars" class="tnum text-xs text-muted-foreground"></span></div>
+      <div class="relative h-1.5 w-full overflow-hidden rounded-full bg-primary/20"><div id="gen-bar" class="bar h-full w-full bg-primary" style="transform:scaleX(0)"></div></div>
+      <ol id="gen-steps" class="flex flex-col gap-2 text-sm"></ol>
+      <div class="flex flex-col gap-2 pt-1"><div class="h-4 w-2/3 animate-pulse rounded-md bg-primary/10"></div><div class="h-4 w-full animate-pulse rounded-md bg-primary/10"></div><div class="h-4 w-5/6 animate-pulse rounded-md bg-primary/10"></div></div>
+    </div>`;
+  const paint = () => {
+    const bar = document.getElementById("gen-bar"), ol = document.getElementById("gen-steps");
+    if (!bar || !ol) return;
+    requestAnimationFrame(() => { bar.style.transform = `scaleX(${((stage + 1) / STAGES.length).toFixed(3)})`; });
+    ol.innerHTML = STAGES.map((s,i) => `<li class="flex items-center gap-2 transition-opacity duration-200 ${i<stage?"":"text-muted-foreground"} ${i>stage?"opacity-50":""}">${i<stage?`<span class="${i===stage-1?"pop ":""}inline-flex">${icon("check","size-4 text-l1")}</span>`:i===stage?icon("loader","size-4 spin"):`<span class="size-4 rounded-full border"></span>`}${s}</li>`).join("");
+  };
+  paint();
+  const timer = setInterval(() => { if (stage < STAGES.length-1) { stage++; paint(); } }, 2500);
+  try {
+    const sample = await claude.use("sample");
+    if (!sample) throw {message:"Live generation isn't available in this view. Open the page in claude.ai while signed in."};
+    const res = await sample(PROMPT(q), { modelTier:"complex", onText: ({text}) => { chars = text.length; const el = document.getElementById("gen-chars"); if (el) el.textContent = `${chars} characters drafted`; } });
+    const raw = res.text.replace(/^```(?:json)?\s*/,"").replace(/```\s*$/,"");
+    const g = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}")+1));
+    g.app = g.app || q; g.provider = g.provider || g.app;
+    g.hands_on = g.hands_on || {text:"Unknown", days:0.5};
+    g.waiting = g.waiting || {best:"Unknown", normal:"Unknown", worst:"Unknown", days:1};
+    ["steps","blockers","cases"].forEach(k => (g[k]||[]).forEach(x => { if (x.ev === "tested") x.ev = "uncertain"; }));
+    g._generated = true;
+    generated = g;
+    clearInterval(timer);
+    location.hash = "draft";
+    if (location.hash === "#draft") route();
+  } catch (err) {
+    clearInterval(timer);
+    btn.disabled = false;
+    const m = err && err.code === "not_granted" ? "Permission to ask Claude was declined, so the agent can't run here."
+      : err && err.code === "rate_limited" ? "Too many requests right now. Wait a minute and try again."
+      : err instanceof SyntaxError ? "The agent's answer came back malformed. Try again."
+      : (err && err.message) || "Something went wrong. Try again.";
+    status.innerHTML = `<div role="alert" class="${alertBox} border-destructive/50 text-destructive">${icon("alert","size-4 mt-0.5")}<div class="font-medium leading-none">Couldn't write the guide</div><div class="col-start-2 text-sm opacity-90">${esc(m)}</div></div>`;
+  }
+}
+
+/* ---------- routing ---------- */
+function goHome(){ if (location.hash) location.hash = ""; else renderHome(); }
+function route(){
+  document.getElementById("sheet-root").innerHTML = "";
+  const k = location.hash.replace("#","");
+  if (LIB[k]) renderGuide(LIB[k], k);
+  else if (k === "draft" && generated) renderGuide(generated, "draft");
+  else renderHome();
+}
+document.getElementById("home-btn").onclick = goHome;
+window.addEventListener("hashchange", route);
+route();
+</script>
