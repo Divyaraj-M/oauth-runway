@@ -21,25 +21,20 @@ import { authClient } from "@/lib/auth/client";
 import { useMe } from "./me";
 
 export function AccountMenu() {
-  const { user, admin, loading, refresh } = useMe();
+  const { user, admin, loading, refresh, requireSignIn } = useMe();
   const path = usePathname();
   const router = useRouter();
 
   // Sign-in and sign-up finish with a server redirect (no reload), so re-check the session on every navigation.
-  useEffect(refresh, [path, refresh]);
-
-  // API routes answer 401 "sign_in" when a session is missing or expired.
   useEffect(() => {
-    const go = () => router.push(`/auth/sign-in?next=${encodeURIComponent(location.pathname + location.search)}`);
-    window.addEventListener("sign-in-required", go);
-    return () => window.removeEventListener("sign-in-required", go);
-  }, [router]);
+    refresh();
+  }, [path, refresh]);
 
   if (loading) return <Skeleton className="size-8 rounded-full" />;
   if (!user)
     return (
-      <Button asChild variant="outline" size="sm">
-        <Link href={`/auth/sign-in${path !== "/" && !path.startsWith("/auth") ? `?next=${encodeURIComponent(path)}` : ""}`}>Sign in</Link>
+      <Button variant="outline" size="sm" onClick={() => requireSignIn()}>
+        Sign in
       </Button>
     );
   const initials = (user.name || user.email).slice(0, 2).toUpperCase();

@@ -95,9 +95,9 @@ export function Home({
     const hit = Object.keys(guides).find((k) => words.includes(k));
     if (hit) return router.push(`/guides/${hit}`);
 
-    // Ask the server rather than trusting cached state: the session may have just started or ended.
-    const signedIn = me.user ?? (await fetch("/api/me", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ user: null }))).user;
-    if (!signedIn) return router.push(`/auth/sign-in?next=${encodeURIComponent("/")}`);
+    // Ask the server rather than trusting cached state; if signed out, sign in here and carry on with this run.
+    const signedIn = (await me.refresh()) ?? null;
+    if (!signedIn && !(await me.requireSignIn())) return;
 
     setGen({ kind: "running", steps: [], chars: 0 });
     const ctrl = new AbortController();

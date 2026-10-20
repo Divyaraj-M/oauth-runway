@@ -21,6 +21,10 @@ Database and sign-in run on **Neon** (Postgres + Neon Auth). With the `neon` CLI
 npx neonctl projects create --name oauth-runway --region-id aws-us-east-1
 npx neonctl neon-auth enable --project-id <project> --branch main --database-name neondb
 npx neonctl connection-string main --project-id <project> --pooled   # → DATABASE_URL
+# Passwordless only: turn off passwords and the shared Google provider
+npx neonctl neon-auth config email-password update --enabled false --project-id <project> --branch main
+npx neonctl neon-auth oauth-provider delete --provider-id google --project-id <project> --branch main
+npx neonctl neon-auth domain add https://<your-domain> --project-id <project> --branch main
 ```
 
 Put `DATABASE_URL`, `NEON_AUTH_BASE_URL` (the `base_url` printed by `neon-auth enable`), `NEON_AUTH_COOKIE_SECRET` (`openssl rand -base64 32`) and `ADMIN_EMAILS` (your email, for `/admin`) in `.env`. Then:
@@ -32,7 +36,7 @@ npm run dev                                # http://localhost:3000
 
 Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_URL` to mirror logos into Cloudinary.
 
-**Sign in** (email + password, or Google), then click **Add AI key** (top right) and paste your own key:
+**Sign in** with your email and the 6-digit code it sends you (no password; the first sign-in creates the account), then click **Add AI key** (top right) and paste your own key:
 
 - **Google Gemini (free):** create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) **in a project with no billing linked**. A billed project with depleted prepay credits is refused ("prepayment credits are depleted"), even for free models. Leave *Use Google Search* off on the free tier.
 - **Anthropic Claude:** a key from console.anthropic.com with API credits. Uses Claude Opus 5.5 with web search and web fetch, which gives the best-sourced guides.
@@ -72,7 +76,7 @@ Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_UR
 4. **"Your case" first.** The same app can be L1 or L3 depending on scopes or who connects (internal vs. customers), so the case table is the default tab.
 5. **Agent vs. you.** Each step says who does it. The agent produces artifacts (plan docs, scope lists, justification text), not just descriptions.
 6. **Bring your own AI key, no server secrets.** Keys stay in the user's browser, are sent per request in a header, and are never stored or logged (errors are redacted). Key-like text is blocked in search and chat on both client and server. Gemini works on the free tier: without Google Search, the agent first picks official pages, then opens them with URL context.
-7. **One shared library, attributed.** Generated guides, chats and a usage log live in Neon Postgres (`db/schema.sql`). Reading is open to everyone; generating and asking need sign-in (Neon Auth), so every run has an owner and shows on `/admin`. Generated guides are immutable and cached; the library refreshes the moment a guide is saved.
+7. **One shared library, attributed.** Generated guides, chats and a usage log live in Neon Postgres (`db/schema.sql`). Reading is open to everyone; generating and asking need sign-in (Neon Auth, passwordless email codes in a modal that resumes what you were doing), so every run has an owner and shows on `/admin`. Generated guides are immutable and cached; the library refreshes the moment a guide is saved.
 8. **Logos by waterfall:** bundled SVGL → SVGL API → BrandBird → Logo.dev → letter tile, resolved on the server and cached for a day. SVGL and BrandBird logos are mirrored into Cloudinary when configured (Logo.dev images are loaded from Logo.dev, as its terms expect). A new catalog entry with a `domain` gets a logo with no code change.
 
 ## Verification
@@ -89,7 +93,7 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 - **4 reviewed guides, not 100.** The other catalog apps rely on live generation.
 - **Free-tier generation is thin:** Gemini Flash-Lite without Google Search opens 1–3 pages and labels most claims Unverified. Use a Claude key or a paid Gemini key with Search for better-sourced drafts.
 - **Generated guides aren't reviewed by a person** and can be wrong. They're always marked *Live draft*.
-- **Sign-in:** Google uses Neon's shared development credentials (the consent screen says Neon) until your own Google OAuth app is added; GitHub sign-in isn't set up; email verification is off. Sign-in works on the production URL and localhost, not on Vercel preview URLs.
+- **Sign-in is email code only** (a modal, no passwords or social sign-in). Codes are sent from Neon's shared mail sender (`auth@mail.myneon.app`), which has low limits and can land in spam; a custom SMTP provider fixes that. Sign-in works on the production URL and localhost, not on Vercel preview URLs.
 - **Generated guides can't be edited or deleted from the UI** yet; an admin can remove rows in the database.
 - **Aircall's waiting times come from one real integration** (Aug–Oct 2026) plus Aircall's stated windows.
 - **`/guides/<unknown>` and `/g/<unknown>` show the not-found page with HTTP 200** (the page streams before the lookup finishes).
@@ -102,7 +106,7 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 - `src/app/api/generate`: live research and guide generation (NDJSON stream; payload `{guide, logo, research}`).
 - `src/app/api/agent`: the agent chat.
 - `src/app/api/key-check`: validates a key.
-- `src/app/g/[id]`: a saved generated guide. `src/app/admin`: usage dashboard. `src/app/auth/*`: sign-in and sign-up.
+- `src/app/g/[id]`: a saved generated guide. `src/app/admin`: usage dashboard. `src/components/auth/sign-in-dialog.tsx`: the email-code sign-in modal.
 - `src/lib/db.ts` + `db/schema.sql`: Neon queries and schema. `src/lib/auth/`: Neon Auth. `src/lib/cloudinary.ts`: logo mirroring.
 - `src/lib/research.ts`: Anthropic (web search + fetch) and Gemini (URL context, optional Search) research loops.
 - `src/lib/logos.ts`: the logo waterfall.
