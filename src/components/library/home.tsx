@@ -307,7 +307,7 @@ function ReviewedRow({ c, g }: { c: CatalogEntry; g: Guide }) {
         href={`/guides/${c.key}`}
         className="flex w-full min-w-0 items-start gap-4 p-4 text-left transition-colors hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset sm:items-center"
       >
-        <AppTile name={c.app} />
+        <AppTile appKey={c.key} name={c.app} />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
           <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
             <span className="flex items-baseline gap-2">
@@ -343,7 +343,7 @@ function ReviewedRow({ c, g }: { c: CatalogEntry; g: Guide }) {
 function UnratedRow({ c, i, onGenerate }: { c: CatalogEntry; i: number; onGenerate: (app: string) => void }) {
   return (
     <li className="enter flex items-start gap-4 p-4 sm:items-center" style={{ ["--i" as string]: i }}>
-      <AppTile name={c.app} />
+      <AppTile appKey={c.key} name={c.app} />
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
         <div className="flex shrink-0 flex-col gap-1.5 sm:w-48">
           <span className="flex items-baseline gap-2">

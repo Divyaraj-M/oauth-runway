@@ -28,7 +28,7 @@ import { toMarkdown } from "@/lib/markdown";
 import type { Guide, Who } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-import { EvidenceBadge, Freshness, LevelBadge, LevelMeter, tag } from "./bits";
+import { AppTile, EvidenceBadge, Freshness, LevelBadge, LevelMeter, tag } from "./bits";
 import { ChatSheet } from "./chat-sheet";
 
 const WHO_CLASS: Record<Who, string> = {
@@ -89,7 +89,10 @@ export function GuideView({ guide: g }: { guide: Guide }) {
           </Badge>
           <Freshness g={g} />
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
+        <div className="flex items-center gap-3">
+          <AppTile appKey={g.key} name={g.app} />
+          <h1 className="text-3xl font-semibold tracking-tight">{g.app} OAuth app</h1>
+        </div>
         <p className="max-w-2xl text-muted-foreground">{g.verdict}</p>
       </header>
 

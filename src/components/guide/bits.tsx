@@ -6,6 +6,8 @@ import { EVIDENCE_LABEL, LEVELS, LEVEL_CLASS, fmtDate } from "@/lib/levels";
 import type { Evidence, Guide } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+import { LOGOS } from "./logos";
+
 const EV_CLASS: Record<Evidence, string> = {
   tested: LEVEL_CLASS[1].badge,
   sourced: LEVEL_CLASS[2].badge,
@@ -43,8 +45,15 @@ export function LevelBadge({ n }: { n: 1 | 2 | 3 | 4 }) {
   );
 }
 
-/** Letter tile. If brand SVGs are added later (developer supplies them under each brand's terms), keep this as the fallback. */
-export function AppTile({ name }: { name: string }) {
+/** Brand logo from LOGOS when we have one; otherwise the letter tile. */
+export function AppTile({ appKey, name }: { appKey?: string; name: string }) {
+  const Logo = appKey ? LOGOS[appKey] : undefined;
+  if (Logo)
+    return (
+      <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-md border bg-muted">
+        <Logo className="size-5" />
+      </span>
+    );
   const letters = name
     .split(/\s+/)
     .map((w) => w[0])

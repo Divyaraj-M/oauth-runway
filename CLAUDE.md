@@ -24,7 +24,7 @@ Guides explain AND move the developer forward: the agent should produce things (
 - Every claim carries an evidence label: Tested (done first-hand), Sourced (links a page actually read), Unverified. A generated guide can never be Tested.
 - No credentials anywhere: not in the repo, the guides, or the chat. The chat and search box block key-like input. API keys live in `.env`, never committed; ship `.env.example`.
 - Never invent precise review durations. Use ranges and list unknowns.
-- Brand logos: the current page uses letter tiles. If adding logos, the developer adds the SVG files themselves (e.g. from svgl.app) under each brand's terms; keep the letter tile as fallback.
+- Brand logos: SVGs come from svgl.app via the `@svgl` shadcn registry (`npx shadcn add @svgl/<name>`), used under each brand's terms, mapped in `src/components/guide/logos.tsx`. The letter tile stays as fallback (Aircall, Jira, Confluence, HubSpot, Zendesk, Airtable have no SVGL entry).
 
 ## Current state
 - Next.js 16 (App Router, Turbopack, Cache Components) + Tailwind v4 + shadcn/ui (radix-nova, zinc tokens carried over from the prototype). Next 16 has breaking changes: read `node_modules/next/dist/docs/` before touching framework APIs (see AGENTS.md).
