@@ -20,6 +20,8 @@ export type Guide = {
   blockers: { text: string; ev: Evidence; src?: string }[];
   /** False when the app has no OAuth for third-party developers (API keys only). */
   oauth_supported?: boolean;
+  /** Composio toolkit slug (e.g. GMAIL), matched from the app name. */
+  composio?: string;
   /** Fixed setup questions every generated guide answers (paid plan, sandbox, review/user cap, scopes, redirect, tokens, consent screen, switching from Composio's managed app). */
   facts?: { q: string; a: string; ev: Evidence; src?: string }[];
   agent_can: string[];
@@ -36,7 +38,7 @@ export type Guide = {
 /** `domain` drives the Logo.dev fallback; a new integration only needs an entry here to get a logo. */
 export type CatalogEntry = { key: string; app: string; provider: string; cat: string; domain?: string };
 
-export type LogoSource = "bundled" | "svgl" | "brandbird" | "logo.dev" | "letter";
+export type LogoSource = "bundled" | "svgl" | "brandbird" | "logo.dev" | "composio" | "letter";
 
 /**
  * Result of the logo waterfall (bundled SVGL component → SVGL API → BrandBird → Logo.dev → letter tile).

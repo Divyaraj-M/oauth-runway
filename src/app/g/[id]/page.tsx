@@ -6,6 +6,7 @@ import { SavedGuideView } from "@/components/drafts/saved-guide-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { currentUser, isAdmin } from "@/lib/auth/server";
 import { getGuide } from "@/lib/db";
+import { findToolkit, toolkitBySlug } from "@/lib/toolkits";
 
 export async function generateMetadata({ params }: PageProps<"/g/[id]">): Promise<Metadata> {
   const g = await getGuide((await params).id);
@@ -38,5 +39,6 @@ async function Saved({ params }: { params: PageProps<"/g/[id]">["params"] }) {
   const admin = isAdmin(user);
   // A draft is visible only to its author and reviewers; for everyone else it doesn't exist.
   if (g.review.status === "draft" && !isOwner && !admin) notFound();
-  return <SavedGuideView payload={g} id={id} review={g.review} isOwner={isOwner} isAdmin={admin} />;
+  const toolkit = toolkitBySlug(g.guide.composio) ?? findToolkit(g.guide.app) ?? findToolkit(g.guide.provider);
+  return <SavedGuideView payload={g} id={id} review={g.review} isOwner={isOwner} isAdmin={admin} toolkit={toolkit} />;
 }

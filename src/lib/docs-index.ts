@@ -30,7 +30,8 @@ export function docsHosts(domain: string | undefined, guesses: string[]): string
       hosts.add(new URL(u).hostname);
     } catch {}
   }
-  return [...hosts].slice(0, 8);
+  // Composio's pages are read separately; its docs index would crowd out the provider's own pages.
+  return [...hosts].filter((h) => !/(^|\.)composio\.dev$/.test(h)).slice(0, 8);
 }
 
 async function fetchText(url: string, maxBytes = 400_000): Promise<string | null> {

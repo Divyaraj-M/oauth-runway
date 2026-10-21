@@ -2,8 +2,8 @@
 
 import { ArrowRightIcon, BotIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, SearchIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppLogo } from "@/components/guide/app-logo";
@@ -56,12 +56,17 @@ export function Home({
   catalog,
   logos,
   community,
+  managed,
+  toolkitCount,
 }: {
   guides: Record<string, Guide>;
   catalog: CatalogEntry[];
   logos: Record<string, LogoInfo>;
   /** Newest generated guide per app, from the database (shared by everyone). */
   community: DraftSummary[];
+  /** Catalog key → whether Composio provides the OAuth app (null: the toolkit has no OAuth). */
+  managed: Record<string, boolean | null>;
+  toolkitCount: number;
 }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -86,7 +91,20 @@ export function Home({
     if (guides[k]) router.replace(`/guides/${k}`);
   }, [guides, router]);
 
+  // Set synchronously, so a second call in the same tick (before state updates) can't start a parallel run.
+  const busy = useRef(false);
+
   async function generate(query: string) {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await runGenerate(query);
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  async function runGenerate(query: string) {
     const text = query.trim();
     if (!text || gen.kind === "running") return;
     if (looksLikeSecret(text))
@@ -138,8 +156,13 @@ export function Home({
     generate(query);
   };
 
+  const forApp = (app: string) => `${app}: what does it take to get a production OAuth app approved for my customers?`;
+
   return (
     <>
+      <Suspense>
+        <GenerateFromLink onRun={(app) => runFromElsewhere(forApp(app))} />
+      </Suspense>
       <section className="flex flex-col items-center gap-8 pt-10 pb-16 text-center md:pt-16">
         <div className="enter flex flex-col items-center gap-5">
           <h1 className="max-w-2xl text-3xl leading-tight font-semibold tracking-tight text-balance md:text-5xl">How long until your OAuth app is approved?</h1>
@@ -208,11 +231,29 @@ export function Home({
         catalog={catalog}
         logos={logos}
         community={community}
-        onGenerate={(app) => runFromElsewhere(`${app}: what does it take to get a production OAuth app approved for my customers?`)}
+        managed={managed}
+        toolkitCount={toolkitCount}
+        onGenerate={(app) => runFromElsewhere(forApp(app))}
         onNewApp={runFromElsewhere}
       />
     </>
   );
+}
+
+/** "Generate" on the toolkits page links to /?generate=<app>: start that run here, then drop the param. */
+function GenerateFromLink({ onRun }: { onRun: (app: string) => void }) {
+  const app = useSearchParams().get("generate");
+  const router = useRouter();
+  const run = useEffectEvent(onRun);
+  // Effects can run twice for one link (dev Strict Mode, Activity re-showing the page); start each link once.
+  const started = useRef<string | null>(null);
+  useEffect(() => {
+    if (!app || started.current === app) return;
+    started.current = app;
+    router.replace("/", { scroll: false });
+    run(app.slice(0, 100));
+  }, [app, router]);
+  return null;
 }
 
 /** Relative time like "3 min ago" for recent drafts. */
@@ -334,6 +375,8 @@ function Library({
   catalog,
   logos,
   community,
+  managed,
+  toolkitCount,
   onGenerate,
   onNewApp,
 }: {
@@ -341,6 +384,8 @@ function Library({
   catalog: CatalogEntry[];
   logos: Record<string, LogoInfo>;
   community: DraftSummary[];
+  managed: Record<string, boolean | null>;
+  toolkitCount: number;
   onGenerate: (app: string) => void;
   onNewApp: (query: string) => void;
 }) {
@@ -452,7 +497,10 @@ function Library({
                           ) : (
                             <span className="truncate font-medium">{c.app}</span>
                           )}
-                          <span className="truncate text-xs text-muted-foreground">{c.cat}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {c.cat}
+                            {managed[c.key] === true ? " · Composio app available" : managed[c.key] === false ? " · Own app on Composio" : ""}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
@@ -517,6 +565,12 @@ function Library({
         <Button size="lg" className="px-4" onClick={() => setDialogOpen(true)}>
           <BotIcon />
           Start a guide for an app not listed
+        </Button>
+        <Button size="lg" variant="ghost" className="px-4" asChild>
+          <Link href="/toolkits">
+            Browse all {toolkitCount.toLocaleString("en-US")} Composio toolkits
+            <ArrowRightIcon />
+          </Link>
         </Button>
       </div>
 

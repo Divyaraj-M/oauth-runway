@@ -7,6 +7,7 @@ import { credentialsFor, describeError, modelOf, ndjson, noKey, research } from 
 import { checkEvidence } from "@/lib/evidence";
 import { looksLikeSecret } from "@/lib/secrets";
 import type { Evidence, GeneratePayload, Guide } from "@/lib/types";
+import { findToolkit, guessToolkit, toolkitBrief, toolkitDocUrl } from "@/lib/toolkits";
 import { normName } from "@/lib/utils";
 
 // Research with several searches and page fetches can take a few minutes.
@@ -33,11 +34,13 @@ export async function POST(req: Request) {
   // Same check as the browser, repeated here so a key never reaches the model or logs.
   if (looksLikeSecret(query)) return Response.json({ message: "Not sent: this looks like a credential." }, { status: 400 });
 
+  // Composio's own page for this toolkit (auth methods, managed app, FAQ) is read on every run when we can tell the app.
+  const guessed = guessToolkit(query);
   const t0 = Date.now();
   return ndjson(creds, async (send) => {
     let text: string, log: Awaited<ReturnType<typeof research>>["log"];
     try {
-      ({ text, log } = await research({ creds, system: GENERATE_SYSTEM, messages: [{ role: "user", content: generateUser(query) }], emit: send, effort: "medium" }));
+      ({ text, log } = await research({ creds, system: GENERATE_SYSTEM, messages: [{ role: "user", content: generateUser(query, guessed && toolkitBrief(guessed)) }], emit: send, effort: "medium", pages: guessed ? [toolkitDocUrl(guessed)] : [] }));
     } catch (err) {
       await logEvent({ userId: user.id, kind: "generate", app: query.slice(0, 80), ok: false, ms: Date.now() - t0, detail: { error: describeError(err).message, model: modelOf(creds) } });
       throw err;
@@ -61,6 +64,7 @@ export async function POST(req: Request) {
     for (const k of ["cases", "steps", "blockers", "agent_can", "you_must", "unverified", "sources"] as const) g[k] ||= [];
     g.facts = Array.isArray(g.facts) ? g.facts.filter((f) => f && typeof f.q === "string" && typeof f.a === "string") : [];
     g._generated = true;
+    g.composio = (findToolkit(g.app) ?? findToolkit(g.provider) ?? guessed)?.slug;
     g.checked = new Date().toISOString().slice(0, 10);
 
     // Durations must be short ranges ("1–3 hours"); models sometimes put a sentence here. Keep the layout honest.

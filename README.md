@@ -57,6 +57,7 @@ Optional: `LOGO_DEV_TOKEN` (publishable `pk_…`) for more logos, `CLOUDINARY_UR
   - Tabs: *Your case* (how your situation changes the path), *Steps*, *Blockers*, *Who does what*, *Sources*.
 - **Agent chat (signed in):** ask about any step; it can draft the plan doc, scope list or reviewer email. Chats are saved to your account per guide.
 - **Share:** every guide has a link anyone can open without signing in (`/guides/<app>` for reviewed, `/g/<id>` for generated), plus Copy as Markdown.
+- **Composio toolkits (`/toolkits`):** all 1,622 Composio toolkits, with their auth methods and whether Composio provides the OAuth app. 343 use OAuth: for 124 of them Composio's managed app lets users connect today, and the other 219 need your own app. Search, filter, open our guide, or generate one. Every guide page also has an **On Composio** panel. Generation reads the toolkit's Composio page (auth, managed app, FAQ) on every run.
 - **Admin (`/admin`, `ADMIN_EMAILS` only):** users, every generated guide, and every generation, question and key check with its outcome, duration and error.
 
 ## Key decisions
@@ -104,6 +105,7 @@ See [VERIFICATION.md](VERIFICATION.md). Sample result:
 
 - `data/guides/*.json`: reviewed guides. Register new ones in `src/lib/guides.ts`.
 - `data/catalog.json`: the app list (`domain` drives logos).
+- `data/composio-toolkits.json`: Composio's toolkit catalog. Refresh it with `npm run sync:toolkits` (reads docs.composio.dev/toolkits.md, managed-auth.md and each OAuth toolkit's page). `src/lib/toolkits.ts` (server, holds the data) and `src/lib/toolkit-meta.ts` (client-safe helpers).
 - `src/app/api/generate`: live research and guide generation (NDJSON stream; payload `{guide, logo, research}`).
 - `src/app/api/agent`: the agent chat.
 - `src/app/api/key-check`: validates a key.

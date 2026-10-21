@@ -31,9 +31,12 @@ import { toMarkdown } from "@/lib/markdown";
 import type { GeneratePayload, Guide, LogoInfo, Who } from "@/lib/types";
 import { cn, pageUrl } from "@/lib/utils";
 
+import type { Toolkit } from "@/lib/toolkit-meta";
+
 import { AppLogo } from "./app-logo";
 import { EvidenceBadge, Freshness, LevelMeter, tag } from "./bits";
 import { ChatSheet } from "./chat-sheet";
+import { ComposioToolkit } from "./composio-toolkit";
 
 const WHO_CLASS: Record<Who, string> = {
   agent: "border-transparent bg-primary text-primary-foreground",
@@ -70,6 +73,7 @@ export function GuideView({
   statusBadge,
   notice,
   actions,
+  toolkit,
 }: {
   guide: Guide;
   logo?: LogoInfo;
@@ -85,6 +89,8 @@ export function GuideView({
   statusBadge?: React.ReactNode;
   notice?: React.ReactNode;
   actions?: React.ReactNode;
+  /** Composio's catalog entry for this app, resolved on the server. */
+  toolkit?: Toolkit;
 }) {
   const l = levelOf(g.difficulty);
   const lc = LEVEL_CLASS[l.n];
@@ -218,6 +224,12 @@ export function GuideView({
         <AlertTitle>Start now</AlertTitle>
         <AlertDescription>{g.start_now}</AlertDescription>
       </Alert>
+
+      {toolkit && (
+        <div {...stagger()} className="enter mt-3">
+          <ComposioToolkit toolkit={toolkit} app={g.app} onAsk={openChat} />
+        </div>
+      )}
 
       <Tabs defaultValue="case" {...stagger()} className="enter gap-4 pt-6">
         <div className="overflow-x-auto">

@@ -4,6 +4,7 @@ import { ApiError as GeminiApiError, GoogleGenAI } from "@google/genai";
 import { getSealedKey } from "./db";
 import { docsHosts, findDocPages, readPage } from "./docs-index";
 import { open } from "./secret-box";
+import { pageUrl } from "./utils";
 
 /** Events streamed to the browser as NDJSON, one JSON object per line. */
 export type ResearchEvent =
@@ -71,10 +72,36 @@ type ResearchArgs = {
   emit: (e: ResearchEvent) => void;
   effort?: "low" | "medium" | "high";
   maxSearches?: number;
+  /** Pages the server reads itself and puts in front of the model (they count as opened), e.g. the Composio toolkit page. */
+  pages?: string[];
 };
 
 /** One research turn: the model searches and opens pages, streams its answer, and reports what it opened. */
 export async function research(args: ResearchArgs): Promise<{ text: string; log: ResearchLog }> {
+  const pre = args.pages?.length ? await readFirst(args.pages, args.emit) : [];
+  if (pre.length) {
+    const last = args.messages.at(-1)!;
+    const text = pre.map(([u, t]) => `=== Page: ${u} ===\n${t}`).join("\n\n");
+    args = { ...args, messages: [...args.messages.slice(0, -1), { ...last, content: `${last.content}\n\nPages opened for you (cite these exact URLs in "src" for claims they support):\n\n${text}` }] };
+  }
+  const out = await dispatch(args);
+  for (const [u] of pre) {
+    if (!out.log.opened.includes(u)) out.log.opened.unshift(u);
+    // Docs pages are read as .md; a citation of the normal page URL is the same page.
+    out.log.aliases[pageUrl(u)] = u;
+  }
+  return out;
+}
+
+/** Reads pages server-side before the model runs. Markdown docs are cut before their tool reference. */
+async function readFirst(urls: string[], emit: ResearchArgs["emit"]) {
+  const read = await Promise.all(urls.map(async (u) => [u, (await readPage(u, 40_000))?.split(/\n## Tools\b/)[0].slice(0, 8000)] as const));
+  const ok = read.filter((r): r is readonly [string, string] => !!r[1]);
+  for (const [u] of ok) emit({ type: "fetch", url: u });
+  return ok;
+}
+
+async function dispatch(args: ResearchArgs): Promise<{ text: string; log: ResearchLog }> {
   const creds = args.creds;
   if (creds.provider === "anthropic") return anthropicResearch(args, creds.apiKey);
   try {

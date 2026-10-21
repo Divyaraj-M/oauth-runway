@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { MeProvider } from "@/components/auth/me";
 import { AiSettingsButton } from "@/components/settings/ai-settings";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 OAuth Runway
               </Link>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/toolkits">Toolkits</Link>
+                </Button>
                 <AiSettingsButton />
                 <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
                   <AccountMenu />

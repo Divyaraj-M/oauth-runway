@@ -6,6 +6,7 @@ import { GuideView } from "@/components/guide/guide-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATALOG, GUIDES, getGuide } from "@/lib/guides";
 import { resolveLogo } from "@/lib/logos";
+import { findToolkit, toolkitBySlug } from "@/lib/toolkits";
 
 export function generateStaticParams() {
   return Object.keys(GUIDES).map((key) => ({ key }));
@@ -29,7 +30,8 @@ async function Guide({ params }: { params: PageProps<"/guides/[key]">["params"] 
   const g = getGuide((await params).key);
   if (!g) notFound();
   const entry = CATALOG.find((c) => c.key === g.key) ?? g;
-  return <GuideView guide={g} logo={await resolveLogo(entry)} />;
+  const toolkit = toolkitBySlug(g.composio) ?? findToolkit(g.app);
+  return <GuideView guide={g} logo={await resolveLogo(entry)} toolkit={toolkit} />;
 }
 
 /** Same blocks as GuideView: breadcrumb, header, difficulty + clocks, tabs. */

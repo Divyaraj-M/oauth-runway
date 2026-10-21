@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import type { Review } from "@/lib/db";
 import { fmtDate } from "@/lib/levels";
+import type { Toolkit } from "@/lib/toolkit-meta";
 import type { GeneratePayload } from "@/lib/types";
 
 /** A generated guide saved in the database, with its review state: draft → pending approval → approved. */
@@ -22,12 +23,14 @@ export function SavedGuideView({
   review,
   isOwner,
   isAdmin,
+  toolkit,
 }: {
   payload: GeneratePayload;
   id: string;
   review: Review;
   isOwner: boolean;
   isAdmin: boolean;
+  toolkit?: Toolkit;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -113,6 +116,7 @@ export function SavedGuideView({
       logo={payload.logo}
       research={payload.research}
       guideId={id}
+      toolkit={toolkit}
       statusBadge={statusBadge}
       notice={notice}
       actions={actions}

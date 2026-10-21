@@ -51,9 +51,16 @@ When you have finished researching, reply with ONLY one JSON object, no prose be
 "blockers":[{"text":string,"ev":"sourced"|"uncertain","src"?:string}] (2-5),
 "agent_can":[string] (3-5),"you_must":[string],"unverified":[string],"sources":[{"t":string,"u":string}]}`;
 
-export const generateUser = (query: string) => `A developer building an AI agent wrote:
+export const generateUser = (query: string, composio?: string) => `A developer building an AI agent wrote:
 """${query}"""
-Identify the app their users will connect, what the agent must do in it, and whether it is for their own company only or for their customers (assume customers if not said). Research it, then return the guide JSON.`;
+Identify the app their users will connect, what the agent must do in it, and whether it is for their own company only or for their customers (assume customers if not said). Research it, then return the guide JSON.${
+  composio
+    ? `
+
+Composio's toolkit catalog says (docs.composio.dev/toolkits): ${composio}
+Use it: if Composio provides a managed OAuth app, say in "cases" that users can connect through Composio's app without registering one (consent screen shows Composio), and that the provider review in this guide applies once they switch to their own app. Cite the toolkit page for Composio facts.`
+    : ""
+}`;
 
 export const agentSystem = (g: Guide) => `You are an integration agent helping a developer set up and get approval for their ${g.app} OAuth app, for an AI agent product.
 
